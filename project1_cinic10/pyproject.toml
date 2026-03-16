@@ -5,8 +5,8 @@ description = "CINIC-10 image classification"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "runners",
+    "dl_base",
 ]
 
 [tool.uv.sources]
-runners = { workspace = true }
+dl_base = { workspace = true }

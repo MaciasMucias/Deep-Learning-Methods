@@ -1,5 +1,5 @@
 [project]
-name = "runners"
+name = "dl_base"
 version = "0.1.0"
 description = "Experiments framework for Deep Learning Methods"
 readme = "README.md"
@@ -7,7 +7,11 @@ authors = [
     { name = "MaciasMucias", email = "maciej2.karaskiewicz@gmail.com" }
 ]
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "numpy>=2.4.3",
+    "torch>=2.10.0",
+    "torchvision>=0.25.0",
+]
 
 [build-system]
 requires = ["uv_build>=0.10.10,<0.11.0"]
