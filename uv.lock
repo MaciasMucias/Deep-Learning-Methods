@@ -1,0 +1,31 @@
+version = 1
+revision = 3
+requires-python = ">=3.13"
+
+[manifest]
+members = [
+    "deeplearning",
+    "project1-cinic10",
+    "runners",
+]
+
+[[package]]
+name = "deeplearning"
+version = "0.1.0"
+source = { virtual = "." }
+
+[[package]]
+name = "project1-cinic10"
+version = "0.1.0"
+source = { virtual = "project1_cinic10" }
+dependencies = [
+    { name = "runners" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "runners", editable = "runners" }]
+
+[[package]]
+name = "runners"
+version = "0.1.0"
+source = { editable = "runners" }

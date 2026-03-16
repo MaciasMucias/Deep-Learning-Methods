@@ -1,0 +1,14 @@
+[project]
+name = "runners"
+version = "0.1.0"
+description = "Experiments framework for Deep Learning Methods"
+readme = "README.md"
+authors = [
+    { name = "MaciasMucias", email = "maciej2.karaskiewicz@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.10.10,<0.11.0"]
+build-backend = "uv_build"
