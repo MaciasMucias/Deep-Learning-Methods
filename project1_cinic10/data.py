@@ -5,7 +5,15 @@ from torch.utils.data import DataLoader
 
 from pathlib import Path
 
-from dl_base.src.dl_base import get_device
+from dl_base import get_device
+from project1_cinic10.config import AugmentationConfig
+
+CINIC10_MEAN = (0.47889522, 0.47227842, 0.43047404)
+CINIC10_STD  = (0.24205776, 0.23828046, 0.25874835)
+CINIC10_CLASSES = [
+    "airplane", "automobile", "bird", "cat", "deer",
+    "dog", "frog", "horse", "ship", "truck",
+]
 
 
 class Cutout:
@@ -73,22 +81,23 @@ def build_transforms(
 
 def get_dataloaders(
     root: str | Path,
-    mean: tuple[float, float, float],
-    std: tuple[float, float, float],
-    horizontal_flip: bool = False,
-    random_crop: bool = False,
-    rotation: bool = False,
-    cutout: bool = False,
-    crop_size: int = 32,
-    crop_padding: int = 4,
-    rotation_range: int = 15,
-    cutout_size: int = 16,
+    augmentation: AugmentationConfig,
     batch_size: int = 64,
     num_workers: int = 4,
 ) -> tuple[DataLoader, DataLoader, DataLoader]:
     root = Path(root)
 
-    train_transforms, eval_transforms = build_transforms(mean=mean, std=std, horizontal_flip=horizontal_flip, random_crop=random_crop, rotation=rotation, cutout=cutout, crop_size=crop_size, crop_padding=crop_padding, rotation_range=rotation_range, cutout_size=cutout_size)
+    train_transforms, eval_transforms = build_transforms(
+        mean            = CINIC10_MEAN,
+        std             = CINIC10_STD,
+        horizontal_flip = augmentation.horizontal_flip,
+        random_crop     = augmentation.random_crop,
+        rotation        = augmentation.rotation,
+        cutout          = augmentation.cutout,
+        crop_size       = augmentation.crop_size,
+        crop_padding    = augmentation.crop_padding,
+        rotation_range  = augmentation.rotation_range,
+        cutout_size     = augmentation.cutout_size)
 
     train_data  = ImageFolder(root / "train",   transform=train_transforms)
     val_data    = ImageFolder(root / "valid",   transform=eval_transforms)
