@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 
 from pathlib import Path
 
-from .utils import get_device
+from dl_base.src.dl_base import get_device
 
 
 class Cutout:
