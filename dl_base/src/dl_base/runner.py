@@ -88,6 +88,14 @@ class Trainer:
 
     def fit(self, train_loader: DataLoader, val_loader: DataLoader, num_epochs: int, project_name: str, run_name: str) -> None:
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
+
+        # CUDA kernel warmup
+        if self.device.type == "cuda":
+            dummy = torch.zeros(1, *next(iter(train_loader))[0].shape[1:], device=self.device)
+            with torch.no_grad():
+                self.model(dummy)
+            torch.cuda.synchronize()
+
         wandb.init(project=project_name, name=run_name)
 
         epoch_bar = tqdm(range(self.start_epoch, num_epochs), desc="Training")

@@ -11,7 +11,7 @@ Deep Learning Methods for University
 ```bash
 git clone https://github.com/you/dl-workspace
 cd dl-workspace
-uv sync
+uv sync --all-packages
 ```
 
 ## Running an experiment
@@ -52,8 +52,9 @@ uv add --dev pytest
 ```
 
 **Importing from the shared library** in your project code just works as a normal import — no path hacks needed:
+
 ```python
-from dl_base.runner import ExperimentRunner
+from dl_base.runner import Trainer
 ```
 
 **If `uv sync` fails after pulling** someone else's changes, it usually means the `uv.lock` was updated — just re-run `uv sync` and it'll reconcile.

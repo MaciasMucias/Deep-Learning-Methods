@@ -1,5 +1,6 @@
 import argparse
 
+from dl_base import get_device
 from project1_cinic10.experiments.utils import setup_experiment
 from project1_cinic10.config import load_config
 
@@ -15,6 +16,8 @@ def get_args() -> argparse.Namespace:
 def main() -> None:
     args = get_args()
     config = load_config(args.config)
+
+    print(f"Running on {get_device().type}")
 
     for seed in args.seeds:
         trainer, train_loader, val_loader, _ = setup_experiment(config, seed)

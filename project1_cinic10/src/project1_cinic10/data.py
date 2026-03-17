@@ -1,8 +1,9 @@
 import torch
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, TensorDataset
 
+from tqdm import tqdm
 from pathlib import Path
 
 from dl_base import get_device
@@ -77,6 +78,16 @@ def build_transforms(
     return transforms.Compose(transforms_list), eval_transforms
 
 
+def preload_dataset(dataset: ImageFolder, batch_size: int, num_workers: int, persistent_workers: bool) -> TensorDataset:
+    """Load entire dataset into RAM as tensors."""
+    all_images = []
+    all_labels = []
+    loader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers, persistent_workers=persistent_workers)
+    print(f"Preloading {len(dataset)} images into RAM...")
+    for images, labels in tqdm(loader, desc="preloading"):
+        all_images.append(images)
+        all_labels.append(labels)
+    return TensorDataset(torch.cat(all_images), torch.cat(all_labels))
 
 
 def get_dataloaders(
@@ -99,14 +110,14 @@ def get_dataloaders(
         rotation_range  = augmentation.rotation_range,
         cutout_size     = augmentation.cutout_size)
 
-    train_data  = ImageFolder(root / "train",   transform=train_transforms)
-    val_data    = ImageFolder(root / "valid",   transform=eval_transforms)
-    test_data   = ImageFolder(root / "test",    transform=eval_transforms)
+    train_data = preload_dataset(ImageFolder(root / "train", transform=train_transforms), batch_size, num_workers, persistent_workers=True)
+    val_data = preload_dataset(ImageFolder(root / "valid", transform=eval_transforms), batch_size, num_workers, persistent_workers=True)
+    test_data = preload_dataset(ImageFolder(root / "test", transform=eval_transforms), batch_size, num_workers, persistent_workers=True)
 
     pin_memory = get_device().type == "cuda"
 
-    train_loader    = DataLoader(train_data, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory, shuffle=True)
-    val_loader      = DataLoader(val_data,   batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory)
-    test_loader     = DataLoader(test_data,  batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory)
+    train_loader    = DataLoader(train_data, batch_size=batch_size, pin_memory=pin_memory, shuffle=True)
+    val_loader      = DataLoader(val_data,   batch_size=batch_size, pin_memory=pin_memory)
+    test_loader     = DataLoader(test_data,  batch_size=batch_size, pin_memory=pin_memory)
 
     return train_loader, val_loader, test_loader
