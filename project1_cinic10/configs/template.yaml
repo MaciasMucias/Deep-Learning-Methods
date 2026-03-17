@@ -1,0 +1,30 @@
+# Experiment Configuration
+model_name:
+
+# Paths
+data_root:
+checkpoint_dir:
+
+# Weights & Biases
+project_name:
+run_name:
+
+# Augmentation
+augmentation:
+  horizontal_flip:
+  random_crop:
+  rotation:
+  cutout:
+  crop_size:
+  crop_padding:
+  rotation_range:
+  cutout_size:
+
+# Training
+training:
+  lr:
+  batch_size:
+  num_epochs:
+  weight_decay:
+  dropout:
+  num_workers:
