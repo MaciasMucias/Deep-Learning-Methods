@@ -1,10 +1,11 @@
 import torch
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader, Dataset
+
+from pathlib import Path
 
 from tqdm import tqdm
-from pathlib import Path
 
 from dl_base import get_device
 from project1_cinic10.config import AugmentationConfig
@@ -58,16 +59,16 @@ def build_transforms(
 ) -> tuple[transforms.Compose, transforms.Compose]:
 
     transforms_list = []
+    transforms_list.append(transforms.ToTensor())
+    transforms_list.append(transforms.Normalize(mean, std))
+
+    # All augmentations after ToTensor — will be applied lazily at __getitem__
     if horizontal_flip:
         transforms_list.append(transforms.RandomHorizontalFlip())
     if random_crop:
         transforms_list.append(transforms.RandomCrop(size=crop_size, padding=crop_padding))
     if rotation:
         transforms_list.append(transforms.RandomRotation(rotation_range))
-
-    transforms_list.append(transforms.ToTensor())
-    transforms_list.append(transforms.Normalize(mean, std))
-
     if cutout:
         transforms_list.append(Cutout(size=cutout_size))
 
@@ -78,16 +79,36 @@ def build_transforms(
     return transforms.Compose(transforms_list), eval_transforms
 
 
-def preload_dataset(dataset: ImageFolder, batch_size: int, num_workers: int, persistent_workers: bool) -> TensorDataset:
-    """Load entire dataset into RAM as tensors."""
-    all_images = []
-    all_labels = []
-    loader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers, persistent_workers=persistent_workers)
-    print(f"Preloading {len(dataset)} images into RAM...")
-    for images, labels in tqdm(loader, desc="preloading"):
-        all_images.append(images)
-        all_labels.append(labels)
-    return TensorDataset(torch.cat(all_images), torch.cat(all_labels))
+class PreloadedDataset(Dataset):
+    def __init__(self, root: Path, transform: transforms.Compose, batch_size: int, num_workers: int, persistent_workers: bool) -> None:
+        # Split transform: everything up to and including ToTensor for preload, everything after for runtime
+        to_tensor_idx = next(i for i, t in enumerate(transform.transforms)
+                             if isinstance(t, transforms.ToTensor))
+
+        preload_transform = transforms.Compose(transform.transforms[:to_tensor_idx + 1])
+        self.transform = transforms.Compose(transform.transforms[to_tensor_idx + 1:]) \
+            if transform.transforms[to_tensor_idx + 1:] else None
+
+        dataset = ImageFolder(root, transform=preload_transform)
+        loader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers, persistent_workers=persistent_workers)
+
+        images, labels = [], []
+        for imgs, lbls in tqdm(loader, desc=f"preloading {root.name}"):
+            images.append(imgs)
+            labels.append(lbls)
+
+        self.images = torch.cat(images)  # stored as float tensors, normalized
+        self.labels = torch.cat(labels)
+
+    def __len__(self) -> int:
+        return len(self.labels)
+
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
+        img = self.images[idx]
+        if self.transform:
+            img = self.transform(img)
+        return img, self.labels[idx]
+
 
 
 def get_dataloaders(
@@ -110,14 +131,14 @@ def get_dataloaders(
         rotation_range  = augmentation.rotation_range,
         cutout_size     = augmentation.cutout_size)
 
-    train_data = preload_dataset(ImageFolder(root / "train", transform=train_transforms), batch_size, num_workers, persistent_workers=True)
-    val_data = preload_dataset(ImageFolder(root / "valid", transform=eval_transforms), batch_size, num_workers, persistent_workers=True)
-    test_data = preload_dataset(ImageFolder(root / "test", transform=eval_transforms), batch_size, num_workers, persistent_workers=True)
+    train_data  = PreloadedDataset(root / "train",   transform=train_transforms, batch_size=batch_size, num_workers=num_workers, persistent_workers=True)
+    val_data    = PreloadedDataset(root / "valid",   transform=eval_transforms, batch_size=batch_size, num_workers=num_workers, persistent_workers=True)
+    test_data   = PreloadedDataset(root / "test",    transform=eval_transforms, batch_size=batch_size, num_workers=num_workers, persistent_workers=True)
 
     pin_memory = get_device().type == "cuda"
 
-    train_loader    = DataLoader(train_data, batch_size=batch_size, pin_memory=pin_memory, shuffle=True)
-    val_loader      = DataLoader(val_data,   batch_size=batch_size, pin_memory=pin_memory)
-    test_loader     = DataLoader(test_data,  batch_size=batch_size, pin_memory=pin_memory)
+    train_loader    = DataLoader(train_data, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory, shuffle=True, persistent_workers=num_workers > 0)
+    val_loader      = DataLoader(val_data,   batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory)
+    test_loader     = DataLoader(test_data,  batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory)
 
     return train_loader, val_loader, test_loader
