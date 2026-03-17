@@ -63,6 +63,13 @@ class Trainer:
 
         return total_loss / total_samples, total_correct / total_samples
 
+    def test(self, dataloader: DataLoader, project_name: str, run_name: str) -> tuple[float, float]:
+        wandb.init(project=project_name, name=run_name, resume="allow")
+        loss, acc = self.evaluate(dataloader)
+        wandb.log({"test/loss": loss, "test/acc": acc})
+        wandb.finish()
+        return loss, acc
+
     def _save_checkpoint(self, filename: str, epoch: int) -> None:
         torch.save(
             {
