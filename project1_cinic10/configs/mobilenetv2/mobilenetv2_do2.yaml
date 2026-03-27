@@ -1,0 +1,32 @@
+# Experiment Configuration
+model_name: "mobilenetv2"
+
+# Paths
+data_root: "project1_cinic10/data"
+checkpoint_dir: "project1_cinic10/runs"
+
+# Weights & Biases
+project_name: "cinic10_cnn"
+run_name: "mobilenetv2_do1"
+
+# Augmentation
+augmentation:
+  horizontal_flip: false
+  random_crop: false
+  rotation: false
+  cutout: false
+  crop_size: 32
+  crop_padding: 4
+  rotation_range: 15
+  cutout_size: 16
+  mean: [0.4789, 0.4723, 0.4305]
+  std: [0.2421, 0.2383, 0.2587]
+
+# Training
+training:
+  lr: 0.001
+  batch_size: 128
+  num_epochs: 100
+  weight_decay: 0.0001
+  dropout: 0.3
+  num_workers: 4
