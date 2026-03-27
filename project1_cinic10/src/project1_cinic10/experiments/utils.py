@@ -11,7 +11,7 @@ from project1_cinic10.models import MODEL_REGISTRY
 def setup_experiment(config: ExperimentConfig, seed: int) -> tuple[Trainer, DataLoader, DataLoader, DataLoader]:
     device = get_device()
     set_seed(seed)
-    checkpoint_dir = config.checkpoint_dir / f"seed{seed}"
+    checkpoint_dir = config.checkpoint_dir / f"{config.run_name}_seed({seed})"
     train_loader, val_loader, test_loader = get_dataloaders(
         config.data_root,
         config.augmentation,
