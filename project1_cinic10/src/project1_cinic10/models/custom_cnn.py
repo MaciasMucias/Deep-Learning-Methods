@@ -41,25 +41,12 @@ class CustomCNN(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.block1(x)
-        print("after block1:", x.shape)
         x = self.block2(x)
-        print("after block2:", x.shape)
         x = self.block3(x)
-        print("after block3:", x.shape)
         x = self.block4(x)
-        print("after block4:", x.shape)
 
         x = self.pool(x)
-        print("after pool:", x.shape)
         x = torch.flatten(x, 1)
-        print("after flatten:", x.shape)
         x = self.classifier(x)
 
         return x
-    
-    
-if __name__ == "__main__":
-    model = CustomCNN()
-    x = torch.randn(4, 3, 32, 32)
-    out = model(x)
-    print(out.shape)

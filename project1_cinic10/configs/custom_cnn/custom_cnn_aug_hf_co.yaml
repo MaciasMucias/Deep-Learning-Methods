@@ -1,5 +1,5 @@
 # Experiment Configuration
-model_name: "resnet20"
+model_name: "custom_cnn"
 
 # Paths
 data_root: "project1_cinic10/data"
@@ -7,13 +7,13 @@ checkpoint_dir: "project1_cinic10/runs"
 
 # Weights & Biases
 project_name: "cinic10_cnn"
-run_name: "resnet20_baseline"
+run_name: "custom_cnn_aug_hf_co"
 
 # Augmentation
 augmentation:
   horizontal_flip: true
-  random_crop: true
-  rotation: true
+  random_crop: false
+  rotation: false
   cutout: true
   crop_size: 32
   crop_padding: 4

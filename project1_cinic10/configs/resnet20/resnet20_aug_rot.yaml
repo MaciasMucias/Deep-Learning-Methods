@@ -7,14 +7,14 @@ checkpoint_dir: "project1_cinic10/runs"
 
 # Weights & Biases
 project_name: "cinic10_cnn"
-run_name: "resnet20_baseline"
+run_name: "resnet20_aug_rot"
 
 # Augmentation
 augmentation:
-  horizontal_flip: true
-  random_crop: true
+  horizontal_flip: false
+  random_crop: false
   rotation: true
-  cutout: true
+  cutout: false
   crop_size: 32
   crop_padding: 4
   rotation_range: 15
