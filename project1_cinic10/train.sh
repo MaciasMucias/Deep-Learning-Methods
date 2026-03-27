@@ -3,7 +3,7 @@
 # shellcheck disable=SC2034
 export WANDB_MODE=offline
 
-WANDB_MODE=offline uv run project1_cinic10/src/project1_cinic10/experiments/train.py --seeds 0 1 2 --config project1_cinic10/configs/mobilenetv2/mobilenetv2_bs1.yaml
+uv run project1_cinic10/src/project1_cinic10/experiments/train.py --seeds 0 1 2 --config project1_cinic10/configs/mobilenetv2/mobilenetv2_bs1.yaml
 uv run project1_cinic10/src/project1_cinic10/experiments/train.py --seeds 0 1 2 --config project1_cinic10/configs/mobilenetv2/mobilenetv2_bs2.yaml
 uv run project1_cinic10/src/project1_cinic10/experiments/train.py --seeds 0 1 2 --config project1_cinic10/configs/mobilenetv2/mobilenetv2_bs3.yaml
 
