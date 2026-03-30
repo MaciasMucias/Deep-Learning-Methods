@@ -1,4 +1,3 @@
-import argparse
 import random
 from collections import defaultdict
 from pathlib import Path
@@ -6,25 +5,46 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import wandb
+
 from torch.optim import AdamW
 from torchvision.datasets import ImageFolder
+from torchvision import transforms
+from tqdm import tqdm
 
 from dl_base import get_device, set_seed
-from project1_cinic10.config import load_config
-from project1_cinic10.data import build_transforms
 
+# =========================================================
+# CONFIG
+# =========================================================
 
-def get_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, required=True, help="path to yaml config file")
-    parser.add_argument("--seeds", type=int, nargs="+", required=True, help="seeds to use")
-    parser.add_argument("--shots", type=int, required=True, help="number of support samples per class")
-    parser.add_argument("--ways", type=int, default=10, help="number of classes per episode")
-    parser.add_argument("--queries", type=int, default=5, help="number of query samples per class")
-    parser.add_argument("--episodes-per-epoch", type=int, default=100, help="training episodes per epoch")
-    parser.add_argument("--eval-episodes", type=int, default=100, help="validation/test episodes")
-    return parser.parse_args()
+DATA_ROOT = Path("project1_cinic10/data")
+CHECKPOINT_ROOT = Path("project1_cinic10/runs")
 
+PROJECT_NAME = "deep-learning-cinic10"
+RUN_GROUP = "fewshot"
+
+WAYS = 5
+QUERIES = 5
+SHOTS_LIST = [1, 5, 10]
+SEEDS = [0, 1, 42]
+
+LR = 0.001
+NUM_EPOCHS = 75
+WEIGHT_DECAY = 0.0001
+DROPOUT = 0.3
+EMBEDDING_DIM = 128
+EPISODES_PER_EPOCH = 100
+EVAL_EPISODES = 100
+PATIENCE = 10
+
+MEAN = [0.4789, 0.4723, 0.4305]
+STD = [0.2421, 0.2383, 0.2587]
+
+TRANSFORM = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize(mean=MEAN, std=STD),
+])
 
 class ConvBlock(nn.Module):
     def __init__(self, in_channels: int, out_channels: int) -> None:
@@ -41,36 +61,32 @@ class ConvBlock(nn.Module):
 
 
 class ProtoNetEncoder(nn.Module):
-    """
-    Small CNN backbone for ProtoNet.
-    Input: 3x32x32
-    Output: embedding vector
-    """
-    def __init__(self, embedding_dim: int = 128) -> None:
+    """4-block CNN backbone. Input: 3×32×32 → embedding vector."""
+
+    def __init__(self, embedding_dim: int = 128, dropout: float = 0.3) -> None:
         super().__init__()
         self.features = nn.Sequential(
-            ConvBlock(3, 64),    # 32 -> 16
-            ConvBlock(64, 64),   # 16 -> 8
-            ConvBlock(64, 64),   # 8 -> 4
-            ConvBlock(64, 64),   # 4 -> 2
+            ConvBlock(3, 64),
+            ConvBlock(64, 64),
+            ConvBlock(64, 64),
+            ConvBlock(64, 64),
         )
+        self.dropout = nn.Dropout(p=dropout)
         self.proj = nn.Linear(64 * 2 * 2, embedding_dim)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.features(x)
         x = torch.flatten(x, 1)
-        x = self.proj(x)
-        return x
+        x = self.dropout(x)
+        return self.proj(x)
 
 
 class EpisodicIndex:
     def __init__(self, dataset: ImageFolder) -> None:
         self.dataset = dataset
         self.class_to_indices: dict[int, list[int]] = defaultdict(list)
-
         for idx, label in enumerate(dataset.targets):
             self.class_to_indices[label].append(idx)
-
         self.classes = sorted(self.class_to_indices.keys())
 
     def sample_episode(
@@ -81,55 +97,37 @@ class EpisodicIndex:
         rng: random.Random,
         device: torch.device,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        if n_way > len(self.classes):
-            raise ValueError(f"Requested n_way={n_way}, but dataset has only {len(self.classes)} classes.")
-
         episode_classes = rng.sample(self.classes, n_way)
 
-        support_images = []
-        support_labels = []
-        query_images = []
-        query_labels = []
+        support_images, support_labels = [], []
+        query_images, query_labels = [], []
 
-        for episode_label, original_class in enumerate(episode_classes):
-            indices = self.class_to_indices[original_class]
-            needed = n_shot + n_query
+        for ep_label, cls in enumerate(episode_classes):
+            indices = self.class_to_indices[cls]
+            selected = rng.sample(indices, n_shot + n_query)
 
-            if len(indices) < needed:
-                raise ValueError(
-                    f"Class {original_class} has only {len(indices)} samples, "
-                    f"but episode needs {needed}."
-                )
+            for idx in selected[:n_shot]:
+                support_images.append(self.dataset[idx][0])
+                support_labels.append(ep_label)
 
-            selected = rng.sample(indices, needed)
-            support_idx = selected[:n_shot]
-            query_idx = selected[n_shot:]
+            for idx in selected[n_shot:]:
+                query_images.append(self.dataset[idx][0])
+                query_labels.append(ep_label)
 
-            for idx in support_idx:
-                image, _ = self.dataset[idx]
-                support_images.append(image)
-                support_labels.append(episode_label)
-
-            for idx in query_idx:
-                image, _ = self.dataset[idx]
-                query_images.append(image)
-                query_labels.append(episode_label)
-
-        support_x = torch.stack(support_images).to(device)
-        support_y = torch.tensor(support_labels, dtype=torch.long, device=device)
-        query_x = torch.stack(query_images).to(device)
-        query_y = torch.tensor(query_labels, dtype=torch.long, device=device)
-
-        return support_x, support_y, query_x, query_y
+        return (
+            torch.stack(support_images).to(device),
+            torch.tensor(support_labels, dtype=torch.long, device=device),
+            torch.stack(query_images).to(device),
+            torch.tensor(query_labels, dtype=torch.long, device=device),
+        )
 
 
-def compute_prototypes(embeddings: torch.Tensor, labels: torch.Tensor, n_way: int) -> torch.Tensor:
-    prototypes = []
-    for c in range(n_way):
-        class_embeddings = embeddings[labels == c]
-        prototype = class_embeddings.mean(dim=0)
-        prototypes.append(prototype)
-    return torch.stack(prototypes, dim=0)
+def compute_prototypes(
+    embeddings: torch.Tensor, labels: torch.Tensor, n_way: int
+) -> torch.Tensor:
+    return torch.stack([
+        embeddings[labels == c].mean(dim=0) for c in range(n_way)
+    ])
 
 
 def prototypical_loss(
@@ -140,18 +138,10 @@ def prototypical_loss(
     query_y: torch.Tensor,
     n_way: int,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    support_embeddings = encoder(support_x)  # [n_way*n_shot, emb_dim]
-    query_embeddings = encoder(query_x)      # [n_way*n_query, emb_dim]
-
-    prototypes = compute_prototypes(support_embeddings, support_y, n_way)  # [n_way, emb_dim]
-
-    distances = torch.cdist(query_embeddings, prototypes, p=2)  # [num_query, n_way]
-    logits = -distances
-
+    prototypes = compute_prototypes(encoder(support_x), support_y, n_way)
+    logits = -torch.cdist(encoder(query_x), prototypes, p=2)
     loss = F.cross_entropy(logits, query_y)
-    preds = logits.argmax(dim=1)
-    acc = (preds == query_y).float().mean()
-
+    acc = (logits.argmax(dim=1) == query_y).float().mean()
     return loss, acc
 
 
@@ -168,176 +158,190 @@ def evaluate(
 ) -> tuple[float, float]:
     encoder.eval()
     rng = random.Random(seed)
-
-    losses = []
-    accs = []
+    losses, accs = [], []
 
     for _ in range(eval_episodes):
         support_x, support_y, query_x, query_y = episodic_index.sample_episode(
-            n_way=n_way,
-            n_shot=n_shot,
-            n_query=n_query,
-            rng=rng,
-            device=device,
+            n_way, n_shot, n_query, rng, device
         )
-
-        loss, acc = prototypical_loss(
-            encoder=encoder,
-            support_x=support_x,
-            support_y=support_y,
-            query_x=query_x,
-            query_y=query_y,
-            n_way=n_way,
-        )
-
+        loss, acc = prototypical_loss(encoder, support_x, support_y, query_x, query_y, n_way)
         losses.append(loss.item())
         accs.append(acc.item())
 
-    return float(sum(losses) / len(losses)), float(sum(accs) / len(accs))
+    return sum(losses) / len(losses), sum(accs) / len(accs)
 
 
-def train_one_seed(args: argparse.Namespace, config, seed: int) -> None:
-    set_seed(seed)
-    device = get_device()
-    root = Path(config.data_root)
-
-    mean = getattr(config.augmentation, "mean", [0.4789, 0.4723, 0.4305])
-    std = getattr(config.augmentation, "std", [0.2421, 0.2383, 0.2587])
-
-    train_transforms, eval_transforms = build_transforms(
-        mean=mean,
-        std=std,
-        horizontal_flip=config.augmentation.horizontal_flip,
-        random_crop=config.augmentation.random_crop,
-        rotation=config.augmentation.rotation,
-        cutout=config.augmentation.cutout,
-        crop_size=config.augmentation.crop_size,
-        crop_padding=config.augmentation.crop_padding,
-        rotation_range=config.augmentation.rotation_range,
-        cutout_size=config.augmentation.cutout_size,
+def save_checkpoint(
+    path: Path,
+    epoch: int,
+    encoder: nn.Module,
+    optimizer: AdamW,
+    best_val_acc: float,
+    seed: int,
+    shots: int,
+) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(
+        {
+            "epoch": epoch,
+            "model_state_dict": encoder.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "best_val_acc": best_val_acc,
+            "seed": seed,
+            "shots": shots,
+            "ways": WAYS,
+            "queries": QUERIES,
+            "lr": LR,
+            "num_epochs": NUM_EPOCHS,
+            "weight_decay": WEIGHT_DECAY,
+            "dropout": DROPOUT,
+            "embedding_dim": EMBEDDING_DIM,
+            "episodes_per_epoch": EPISODES_PER_EPOCH,
+            "eval_episodes": EVAL_EPISODES,
+        },
+        path,
     )
 
-    train_data = ImageFolder(root / "train", transform=train_transforms)
-    val_data = ImageFolder(root / "valid", transform=eval_transforms)
-    test_data = ImageFolder(root / "test", transform=eval_transforms)
+
+
+def train_one_run(seed: int, shots: int) -> None:
+    set_seed(seed)
+    device = get_device()
+
+    train_data = ImageFolder(DATA_ROOT / "train", transform=TRANSFORM)
+    val_data = ImageFolder(DATA_ROOT / "valid", transform=TRANSFORM)
+    test_data = ImageFolder(DATA_ROOT / "test", transform=TRANSFORM)
 
     train_episodic = EpisodicIndex(train_data)
     val_episodic = EpisodicIndex(val_data)
     test_episodic = EpisodicIndex(test_data)
 
-    encoder = ProtoNetEncoder(embedding_dim=128).to(device)
+    encoder = ProtoNetEncoder(EMBEDDING_DIM, DROPOUT).to(device)
+    optimizer = AdamW(encoder.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
 
-    optimizer = AdamW(
-        encoder.parameters(),
-        lr=config.training.lr,
-        weight_decay=config.training.weight_decay,
+    checkpoint_dir = (
+        CHECKPOINT_ROOT
+        / "fewshot"
+        / f"{shots}shot"
+        / f"seed{seed}"
     )
 
-    checkpoint_dir = Path(config.checkpoint_dir) / "few_shot_protonet" / f"seed{seed}" / f"{args.shots}shot"
-    checkpoint_dir.mkdir(parents=True, exist_ok=True)
-    best_ckpt_path = checkpoint_dir / "best.pt"
+    run_name = f"fewshot_{shots}shot_seed{seed}"
+
+    wandb.init(
+        project=PROJECT_NAME,
+        name=run_name,
+        group=RUN_GROUP,
+        config={
+            "seed": seed,
+            "shots": shots,
+            "ways": WAYS,
+            "queries": QUERIES,
+            "episodes_per_epoch": EPISODES_PER_EPOCH,
+            "eval_episodes": EVAL_EPISODES,
+            "lr": LR,
+            "num_epochs": NUM_EPOCHS,
+            "weight_decay": WEIGHT_DECAY,
+            "dropout": DROPOUT,
+            "embedding_dim": EMBEDDING_DIM,
+            "augmentation": "none",
+            "mean": MEAN,
+            "std": STD,
+        },
+    )
 
     best_val_acc = -1.0
+    epochs_without_improvement = 0
 
-    print(f"\n=== Seed {seed} ===")
-    print(f"Device: {device.type}")
-    print(
-        f"Few-shot setup: {args.ways}-way, {args.shots}-shot, "
-        f"{args.queries} query/class, {args.episodes_per_epoch} train episodes/epoch"
-    )
+    print(f"\nSeed {seed} | {shots}-shot")
+    epoch_bar = tqdm(range(NUM_EPOCHS), desc=run_name)
 
-    for epoch in range(1, config.training.num_epochs + 1):
+    for epoch in epoch_bar:
         encoder.train()
         rng = random.Random(seed * 10_000 + epoch)
+        train_losses, train_accs = [], []
 
-        train_losses = []
-        train_accs = []
-
-        for _ in range(args.episodes_per_epoch):
+        for _ in range(EPISODES_PER_EPOCH):
             support_x, support_y, query_x, query_y = train_episodic.sample_episode(
-                n_way=args.ways,
-                n_shot=args.shots,
-                n_query=args.queries,
-                rng=rng,
-                device=device,
+                WAYS, shots, QUERIES, rng, device
             )
-
             loss, acc = prototypical_loss(
-                encoder=encoder,
-                support_x=support_x,
-                support_y=support_y,
-                query_x=query_x,
-                query_y=query_y,
-                n_way=args.ways,
+                encoder, support_x, support_y, query_x, query_y, WAYS
             )
-
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-
             train_losses.append(loss.item())
             train_accs.append(acc.item())
 
-        train_loss = float(sum(train_losses) / len(train_losses))
-        train_acc = float(sum(train_accs) / len(train_accs))
+        train_loss = sum(train_losses) / len(train_losses)
+        train_acc = sum(train_accs) / len(train_accs)
 
         val_loss, val_acc = evaluate(
-            encoder=encoder,
-            episodic_index=val_episodic,
-            n_way=args.ways,
-            n_shot=args.shots,
-            n_query=args.queries,
-            eval_episodes=args.eval_episodes,
-            device=device,
-            seed=seed + epoch,
+            encoder, val_episodic, WAYS, shots, QUERIES,
+            EVAL_EPISODES, device, seed=seed + epoch + 1,
         )
 
-        print(
-            f"Epoch {epoch:03d}/{config.training.num_epochs} | "
-            f"train_loss={train_loss:.4f} train_acc={train_acc:.4f} | "
-            f"val_loss={val_loss:.4f} val_acc={val_acc:.4f}"
+        wandb.log({
+            "epoch": epoch,
+            "train/loss": train_loss,
+            "train/acc": train_acc,
+            "val/loss": val_loss,
+            "val/acc": val_acc,
+        })
+
+        save_checkpoint(
+            checkpoint_dir / "last.pt", epoch, encoder, optimizer,
+            best_val_acc, seed, shots,
         )
 
         if val_acc > best_val_acc:
             best_val_acc = val_acc
-            torch.save(
-                {
-                    "epoch": epoch,
-                    "model_state_dict": encoder.state_dict(),
-                    "optimizer_state_dict": optimizer.state_dict(),
-                    "best_val_acc": best_val_acc,
-                    "args": vars(args),
-                },
-                best_ckpt_path,
+            epochs_without_improvement = 0
+            save_checkpoint(
+                checkpoint_dir / "best.pt", epoch, encoder, optimizer,
+                best_val_acc, seed, shots,
             )
+        else:
+            epochs_without_improvement += 1
 
-    print(f"\nBest val_acc for seed {seed}: {best_val_acc:.4f}")
+        epoch_bar.set_postfix(
+            val_acc=f"{val_acc:.4f}",
+            val_loss=f"{val_loss:.4f}",
+            patience=f"{epochs_without_improvement}/{PATIENCE}",
+        )
 
-    checkpoint = torch.load(best_ckpt_path, map_location=device)
-    encoder.load_state_dict(checkpoint["model_state_dict"])
+        if epochs_without_improvement >= PATIENCE:
+            tqdm.write(f"Early stopping at epoch {epoch}.")
+            break
+
+    best_ckpt = torch.load(checkpoint_dir / "best.pt", map_location=device)
+    encoder.load_state_dict(best_ckpt["model_state_dict"])
 
     test_loss, test_acc = evaluate(
-        encoder=encoder,
-        episodic_index=test_episodic,
-        n_way=args.ways,
-        n_shot=args.shots,
-        n_query=args.queries,
-        eval_episodes=args.eval_episodes,
-        device=device,
-        seed=seed + 9999,
+        encoder, test_episodic, WAYS, shots, QUERIES,
+        EVAL_EPISODES, device, seed=seed + 9999,
     )
 
-    print(f"Test results | loss={test_loss:.4f} acc={test_acc:.4f}")
+    wandb.log({
+        "best_val_acc": best_val_acc,
+        "test/loss": test_loss,
+        "test/acc": test_acc,
+    })
+
+    print(
+        f"Done {run_name} | best_val_acc={best_val_acc:.4f} "
+        f"| test_loss={test_loss:.4f} | test_acc={test_acc:.4f}"
+    )
+    wandb.finish()
 
 
 def main() -> None:
-    args = get_args()
-    config = load_config(args.config)
-
-    print(f"Running ProtoNet few-shot on {get_device().type}")
-
-    for seed in args.seeds:
-        train_one_seed(args, config, seed)
+    print(f"Running fewshot on {get_device().type}")
+    print(f"Planned runs: {len(SEEDS) * len(SHOTS_LIST)}")
+    for shots in SHOTS_LIST:
+        for seed in SEEDS:
+            train_one_run(seed=seed, shots=shots)
 
 
 if __name__ == "__main__":
