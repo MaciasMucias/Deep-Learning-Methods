@@ -1,3 +1,6 @@
+import random
+
+import numpy as np
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
@@ -78,6 +81,12 @@ class Trainer:
                 "model_state_dict": self.model.state_dict(),
                 "optimizer_state_dict": self.optimizer.state_dict(),
                 "best_val_acc": self.best_val_acc,
+                "rng_state": {
+                    "torch": torch.get_rng_state(),
+                    "cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
+                    "numpy": np.random.get_state(),
+                    "python": random.getstate(),
+                },
             }, self.checkpoint_dir / f"{filename}.pth")
 
     def load_checkpoint(self, filename: str) -> None:
@@ -86,6 +95,13 @@ class Trainer:
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         self.start_epoch = checkpoint['start_epoch'] + 1
         self.best_val_acc = checkpoint['best_val_acc']
+
+        if rng := checkpoint.get("rng_state"):
+            torch.set_rng_state(rng["torch"])
+            if rng["cuda"] is not None and torch.cuda.is_available():
+                torch.cuda.set_rng_state_all(rng["cuda"])
+            np.random.set_state(rng["numpy"])
+            random.setstate(rng["python"])
 
     def fit(self, train_loader: DataLoader, val_loader: DataLoader, num_epochs: int, project_name: str, run_name: str) -> None:
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
