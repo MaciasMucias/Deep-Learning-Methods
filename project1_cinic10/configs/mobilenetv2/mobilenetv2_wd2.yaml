@@ -7,7 +7,7 @@ checkpoint_dir: "project1_cinic10/runs"
 
 # Weights & Biases
 project_name: "cinic10_cnn"
-run_name: "mobilenetv2_wd1"
+run_name: "mobilenetv2_wd2"
 
 # Augmentation
 augmentation:

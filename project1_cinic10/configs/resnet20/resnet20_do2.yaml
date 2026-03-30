@@ -7,7 +7,7 @@ checkpoint_dir: "project1_cinic10/runs"
 
 # Weights & Biases
 project_name: "cinic10_cnn"
-run_name: "resnet20_do1"
+run_name: "resnet20_do2"
 
 # Augmentation
 augmentation:
@@ -26,7 +26,7 @@ augmentation:
 training:
   lr: 0.001
   batch_size: 128
-  num_epochs: 100
+  num_epochs: 60
   weight_decay: 0.0001
   dropout: 0.3
   num_workers: 4

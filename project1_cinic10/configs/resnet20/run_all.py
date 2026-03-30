@@ -5,7 +5,7 @@ import os
 # ===== KONFIG =====
 SEEDS = [42]
 SCRIPT = "project1_cinic10.experiments.train"
-LOG_FILE = "completed_runs_cnn.txt"
+LOG_FILE = "completed_runs_resnet20.txt"
 # ==================
 
 
