@@ -9,9 +9,9 @@ from tqdm import tqdm
 
 class Trainer:
 
-    __slots__ = ("model", "optimizer", "criterion", "device", "checkpoint_dir", "best_val_acc", "start_epoch")
+    __slots__ = ("model", "optimizer", "criterion", "device", "checkpoint_dir", "best_val_acc", "start_epoch", "patience", "_epochs_without_improvement")
 
-    def __init__(self, model: nn.Module, optimizer: torch.optim.Optimizer, criterion: nn.Module, device: torch.device, checkpoint_dir: str | Path) -> None:
+    def __init__(self, model: nn.Module, optimizer: torch.optim.Optimizer, criterion: nn.Module, device: torch.device, checkpoint_dir: str | Path, patience: int = 5) -> None:
         self.model = model
         self.optimizer = optimizer
         self.criterion = criterion
@@ -19,6 +19,8 @@ class Trainer:
         self.checkpoint_dir = Path(checkpoint_dir)
         self.best_val_acc: float = 0.0
         self.start_epoch: int = 0
+        self.patience: int = patience
+        self._epochs_without_improvement: int = 0
 
     def train_one_epoch(self, dataloader: DataLoader) -> tuple[float, float]:
         total_samples: int = 0
@@ -39,7 +41,6 @@ class Trainer:
             total_correct += (predictions == targets).sum().item()
             total_loss += loss.item() * inputs.size(0)
             total_samples += inputs.size(0)
-
 
         return total_loss / total_samples, total_correct / total_samples
 
@@ -115,7 +116,19 @@ class Trainer:
 
             if val_acc > self.best_val_acc:
                 self.best_val_acc = val_acc
+                self._epochs_without_improvement = 0
                 self._save_checkpoint("best", epoch)
+            else:
+                self._epochs_without_improvement += 1
 
-            epoch_bar.set_postfix(val_acc=f"{val_acc:.4f}", val_loss=f"{val_loss:.4f}")
+            epoch_bar.set_postfix(
+                val_acc=f"{val_acc:.4f}",
+                val_loss=f"{val_loss:.4f}",
+                patience=f"{self._epochs_without_improvement}/{self.patience}",
+            )
+
+            if self._epochs_without_improvement >= self.patience:
+                tqdm.write(f"Early stopping triggered at epoch {epoch} — no val_acc improvement for {self.patience} epochs.")
+                break
+
         wandb.finish()
