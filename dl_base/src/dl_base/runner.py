@@ -100,7 +100,7 @@ class Trainer:
             np.random.set_state(rng["numpy"])
             random.setstate(rng["python"])
 
-    def fit(self, train_loader: DataLoader, val_loader: DataLoader, num_epochs: int, project_name: str, run_name: str) -> None:
+    def fit(self, train_loader: DataLoader, val_loader: DataLoader, num_epochs: int, project_name: str, group_name: str, run_name: str) -> None:
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
         # CUDA kernel warmup
@@ -110,7 +110,7 @@ class Trainer:
                 self.model(dummy)
             torch.cuda.synchronize()
 
-        wandb.init(project=project_name, name=run_name)
+        wandb.init(project=project_name, group=group_name, name=run_name)
 
         epoch_bar = tqdm(range(self.start_epoch, num_epochs), desc="Training")
         for epoch in epoch_bar:
