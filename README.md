@@ -9,23 +9,15 @@ Deep Learning Methods for University
 ## Setup
 
 ```bash
-git clone https://github.com/you/dl-workspace
-cd dl-workspace
+git clone https://github.com/MaciasMucias/Deep-Learning-Methods.git
+cd Deep-Learning-Methods
 uv sync --all-packages
 ```
 
-## Running an experiment
+## Running an experiment from the workspace root
 
 ```bash
-cd project1_cinic10
-uv run experiments/train.py
-uv run experiments/eval.py
-```
-
-Or from the workspace root:
-
-```bash
-uv run --package project1-cinic10 experiments/train.py
+uv run project1-cinic10/srd/project1-cinic10/experiments/train.py
 ```
 
 ## Extending the project
