@@ -61,7 +61,7 @@ class BasicBlock(nn.Module):
     
 
 class ResNet20(nn.Module):
-    def __init__(self, num_classes: int = 10) -> None:
+    def __init__(self, num_classes: int = 10, dropout: float = 0.0) -> None:
         super().__init__()
         
         self.in_channels = 16
@@ -83,6 +83,7 @@ class ResNet20(nn.Module):
         self.layer3 = self._make_layer(out_channels=64, blocks=3, stride=2)
 
         self.pool = nn.AdaptiveAvgPool2d((1, 1))
+        self.dropout = nn.Dropout(p=dropout)
         self.fc = nn.Linear(64, num_classes)
 
     def _make_layer(self, out_channels: int, blocks: int, stride: int) -> nn.Sequential:
@@ -107,14 +108,8 @@ class ResNet20(nn.Module):
 
         x = self.pool(x)
         x = torch.flatten(x, 1)
+        x = self.dropout(x)
         x = self.fc(x)
 
         return x
     
-
-if __name__ == "__main__":
-    model = ResNet20()
-    x = torch.randn(4, 3, 32, 32)
-
-    out = model(x)
-    print("output shape:", out.shape)

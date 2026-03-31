@@ -8,15 +8,16 @@ from project1_cinic10.data import get_dataloaders
 from project1_cinic10.models import MODEL_REGISTRY
 
 
-def setup_experiment(config: ExperimentConfig, seed: int) -> tuple[Trainer, DataLoader, DataLoader, DataLoader]:
+def setup_experiment(config: ExperimentConfig, seed: int, *, test_mode: bool = False) -> tuple[Trainer, DataLoader, DataLoader, DataLoader]:
     device = get_device()
     set_seed(seed)
-    checkpoint_dir = config.checkpoint_dir / f"seed{seed}"
+    checkpoint_dir = config.checkpoint_dir / f"{config.run_name}_seed({seed})"
     train_loader, val_loader, test_loader = get_dataloaders(
         config.data_root,
         config.augmentation,
         config.training.batch_size,
-        config.training.num_workers
+        config.training.num_workers,
+        test_mode,
     )
     model = MODEL_REGISTRY[config.model_name](dropout=config.training.dropout)
     model.to(device)

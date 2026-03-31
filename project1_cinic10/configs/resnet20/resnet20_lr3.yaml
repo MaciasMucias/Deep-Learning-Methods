@@ -7,14 +7,14 @@ checkpoint_dir: "project1_cinic10/runs"
 
 # Weights & Biases
 project_name: "cinic10_cnn"
-run_name: "resnet20_baseline"
+run_name: "resnet20_lr3"
 
 # Augmentation
 augmentation:
-  horizontal_flip: true
-  random_crop: true
-  rotation: true
-  cutout: true
+  horizontal_flip: false
+  random_crop: false
+  rotation: false
+  cutout: false
   crop_size: 32
   crop_padding: 4
   rotation_range: 15
@@ -24,9 +24,9 @@ augmentation:
 
 # Training
 training:
-  lr: 0.001
+  lr: 0.0001
   batch_size: 128
-  num_epochs: 100
+  num_epochs: 60
   weight_decay: 0.0001
   dropout: 0.3
   num_workers: 4

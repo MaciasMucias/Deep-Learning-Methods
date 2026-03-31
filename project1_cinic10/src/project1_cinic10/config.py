@@ -2,6 +2,7 @@ import yaml
 
 from pydantic import BaseModel
 from pathlib import Path
+from typing import List
 
 class AugmentationConfig(BaseModel):
     horizontal_flip: bool
@@ -12,6 +13,9 @@ class AugmentationConfig(BaseModel):
     crop_padding: int
     rotation_range: int
     cutout_size: int
+    mean: List[float]
+    std: List[float]
+
 
 class TrainingConfig(BaseModel):
     lr: float
