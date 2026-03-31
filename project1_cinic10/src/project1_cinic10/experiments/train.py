@@ -17,9 +17,8 @@ def main() -> None:
     args = get_args()
     config = load_config(args.config)
 
-    print(f"Running on {get_device().type}")
-
     for seed in args.seeds:
+        print(f"Running {config.run_name} with seed {seed} on {get_device().type}")
         trainer, train_loader, val_loader, _ = setup_experiment(config, seed)
         trainer.fit(train_loader, val_loader, config.training.num_epochs, config.project_name, f"{config.run_name}_seed{seed}")
 

@@ -67,11 +67,8 @@ class Trainer:
 
         return total_loss / total_samples, total_correct / total_samples
 
-    def test(self, dataloader: DataLoader, project_name: str, run_name: str) -> tuple[float, float]:
-        wandb.init(project=project_name, name=run_name, resume="allow")
+    def test(self, dataloader: DataLoader) -> tuple[float, float]:
         loss, acc = self.evaluate(dataloader)
-        wandb.log({"test/loss": loss, "test/acc": acc})
-        wandb.finish()
         return loss, acc
 
     def _save_checkpoint(self, filename: str, epoch: int) -> None:
@@ -90,7 +87,7 @@ class Trainer:
             }, self.checkpoint_dir / f"{filename}.pth")
 
     def load_checkpoint(self, filename: str) -> None:
-        checkpoint = torch.load(self.checkpoint_dir / f"{filename}.pth", map_location=self.device)
+        checkpoint = torch.load(self.checkpoint_dir / f"{filename}.pth", map_location=self.device, weights_only=False)
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         self.start_epoch = checkpoint['start_epoch'] + 1

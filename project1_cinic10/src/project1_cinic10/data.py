@@ -116,7 +116,8 @@ def get_dataloaders(
     augmentation: AugmentationConfig,
     batch_size: int = 64,
     num_workers: int = 4,
-) -> tuple[DataLoader, DataLoader, DataLoader]:
+    test_mode: bool = False,
+) -> tuple[DataLoader | None, DataLoader | None, DataLoader | None]:
     root = Path(root)
 
     train_transforms, eval_transforms = build_transforms(
@@ -131,14 +132,16 @@ def get_dataloaders(
         rotation_range  = augmentation.rotation_range,
         cutout_size     = augmentation.cutout_size)
 
-    train_data  = PreloadedDataset(root / "train",   transform=train_transforms, batch_size=batch_size, num_workers=num_workers, persistent_workers=True)
-    val_data    = PreloadedDataset(root / "valid",   transform=eval_transforms, batch_size=batch_size, num_workers=num_workers, persistent_workers=True)
-    test_data   = PreloadedDataset(root / "test",    transform=eval_transforms, batch_size=batch_size, num_workers=num_workers, persistent_workers=True)
-
     pin_memory = get_device().type == "cuda"
 
-    train_loader    = DataLoader(train_data, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory, shuffle=True, persistent_workers=num_workers > 0)
-    val_loader      = DataLoader(val_data,   batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory)
-    test_loader     = DataLoader(test_data,  batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory)
+    if not test_mode:
+        train_data      = PreloadedDataset(root / "train",   transform=train_transforms, batch_size=batch_size, num_workers=num_workers, persistent_workers=num_workers > 0)
+        val_data        = PreloadedDataset(root / "valid",   transform=eval_transforms, batch_size=batch_size, num_workers=num_workers, persistent_workers=num_workers > 0)
+        train_loader    = DataLoader(train_data,             batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory, shuffle=True, persistent_workers=num_workers > 0)
+        val_loader      = DataLoader(val_data,               batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory)
+        return train_loader, val_loader, None
 
-    return train_loader, val_loader, test_loader
+    test_data   = PreloadedDataset(root / "test",    transform=eval_transforms, batch_size=batch_size, num_workers=num_workers, persistent_workers=num_workers > 0)
+    test_loader     = DataLoader(test_data,  batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory)
+    return None, None, test_loader
+
