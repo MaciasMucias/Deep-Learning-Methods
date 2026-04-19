@@ -1,0 +1,34 @@
+[project]
+name = "project2-speechcommands"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "MaciasMucias", email = "maciej2.karaskiewicz@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "dl-base",
+    "matplotlib>=3.10.8",
+    "pydantic>=2.12.5",
+    "pyyaml>=6.0.3",
+    "scikit-learn>=1.8.0",
+    "seaborn>=0.13.2",
+    "torchaudio>=2.11.0",
+    "torchcodec>=0.11.1",
+]
+
+[project.scripts]
+project2-speechcommands = "project2_speechcommands:main"
+
+[build-system]
+requires = ["uv_build>=0.10.10,<0.11.0"]
+build-backend = "uv_build"
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+
+[tool.uv.sources]
+dl-base = { workspace = true }
+torchaudio = { index = "pytorch-cu128" }
