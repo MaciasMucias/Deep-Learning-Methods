@@ -110,7 +110,7 @@ class SpeechCommandsDataset(Dataset):
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, int]:
         """
         Pipeline:
-        1. Load WAV with torchaudio.load()
+        1. Load WAV with sf.read()
         2. Resample to audio_cfg.sample_rate if needed
         3. Pad or trim to audio_cfg.target_length samples
         4. Compute log-Mel: MelSpectrogram → log(spec + 1e-9)  shape: (1, n_mels, time_frames)
