@@ -6,10 +6,10 @@ from pathlib import Path
 from random import sample
 from typing import Literal
 
+import soundfile as sf
 import torch
 import torchaudio
 from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
-from torchcodec.decoders import AudioDecoder
 
 from project2_speechcommands.config import AudioConfig, BalanceConfig
 
@@ -55,16 +55,14 @@ class SpeechCommandsDataset(Dataset):
             f_max=self.audio_cfg.f_max,
         )
 
-        raise NotImplementedError
-
     def _parse_split_files(self) -> tuple[set[str], set[str]]:
         """Read validation_list.txt and testing_list.txt.
         Returns (val_set, test_set) where each entry is 'word/filename.wav'."""
         def list_file_to_set(file: Path) -> set[str]:
             with file.open("r") as f:
                 return set(f.read().splitlines())
-        return (list_file_to_set(self.data_root / "validation_list.txt"),
-                list_file_to_set(self.data_root / "testing_list.txt"))
+        return (list_file_to_set(self.data_root / "train" / "validation_list.txt"),
+                list_file_to_set(self.data_root / "train" / "testing_list.txt"))
 
     def _collect_samples(self) -> list[tuple[Path, int, int | None]]:
         """Walk data_root/train/, assign labels:
@@ -73,7 +71,7 @@ class SpeechCommandsDataset(Dataset):
         - everything else → UNKNOWN_LABEL
         Filter by split membership using parsed split files."""
         samples = []
-        for word_dir in (self.data_root / "train").iterdir():
+        for word_dir in (self.data_root / "train" / "audio").iterdir():
             if word_dir.name == "_background_noise_": continue
             label = CORE_COMMANDS.index(word_dir.name) if word_dir.name in CORE_COMMANDS else UNKNOWN_LABEL
             for wav in word_dir.glob("*.wav"):
@@ -94,13 +92,13 @@ class SpeechCommandsDataset(Dataset):
         """Sample n random 1-second windows from _background_noise_/ WAV files.
         Returns list of (noise_file_path, start_sample_offset, SILENCE_LABEL).
         n should be approximately the size of the smallest core command class."""
-        noise_files = list((self.data_root / "audio" / "_background_noise_").glob("*.wav"))
+        noise_files = list((self.data_root / "train" / "audio" / "_background_noise_").glob("*.wav"))
         noise_samples = []
         num_samples_cache: dict[Path, int] = {}
         for i in range(n):
             noise_file_path = random.choice(noise_files)
             if noise_file_path not in num_samples_cache:
-                num_samples_cache[noise_file_path] = AudioDecoder(noise_file_path).metadata.num_frames
+                num_samples_cache[noise_file_path] = sf.info(noise_file_path).frames
             max_offset = num_samples_cache[noise_file_path]
             start_sample_offset = random.randint(0, max_offset)
             noise_samples.append((noise_file_path, SILENCE_LABEL, start_sample_offset))
@@ -126,16 +124,14 @@ class SpeechCommandsDataset(Dataset):
         label = selected_sample[1]
         # Check if it's a silence sample
         if selected_sample[2] is not None:
-            audio = torchaudio.load(selected_sample[0], num_frames=self.audio_cfg.target_length, frame_offset=selected_sample[2])
+            data, sr = sf.read(selected_sample[0], start=selected_sample[2], stop=selected_sample[2] + self.audio_cfg.target_length, dtype='float32', always_2d=True)
         else:
-            # It's not
-            audio = torchaudio.load(selected_sample[0], num_frames=self.audio_cfg.target_length)
+            data, sr = sf.read(selected_sample[0], dtype='float32', always_2d=True)
+        waveform = torch.from_numpy(data.T)  # (channels, samples)
 
         # Step 2
-        if audio[1] != self.audio_cfg.sample_rate:
-            waveform = torchaudio.functional.resample(audio[0], orig_freq=audio[1], new_freq=self.audio_cfg.sample_rate)
-        else:
-            waveform = audio[0]
+        if sr != self.audio_cfg.sample_rate:
+            waveform = torchaudio.functional.resample(waveform, orig_freq=sr, new_freq=self.audio_cfg.sample_rate)
 
         # Step 3
         # Check if it needs padding, it cant be longer than target frames.
@@ -151,7 +147,7 @@ class SpeechCommandsDataset(Dataset):
 
         # Step 6
         if normalised_logMel.shape[1] != self.audio_cfg.target_frames:
-            normalised_spec = torch.nn.functional.pad(normalised_logMel, (0, self.audio_cfg.target_frames - normalised_logMel.shape[-1]))
+            normalised_logMel = torch.nn.functional.pad(normalised_logMel, (0, self.audio_cfg.target_frames - normalised_logMel.shape[-1]))
 
         return normalised_logMel, label
 

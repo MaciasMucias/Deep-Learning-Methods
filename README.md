@@ -5,6 +5,7 @@ Deep Learning Methods for University
 ## Requirements
 
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
+- [FFmpeg](https://ffmpeg.org/download.html) (required for audio loading in project2; on Windows install the full-shared build via `winget install ffmpeg`)
 
 ## Setup
 
