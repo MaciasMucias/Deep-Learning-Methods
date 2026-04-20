@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 class AudioConfig(BaseModel):
     sample_rate: int = 16000
     n_mels: int = 128
-    n_fft: int = 400
+    n_fft: int = 1024
     hop_length: int = 160
     f_min: float = 0.0
     f_max: float = 8000.0
@@ -21,7 +21,6 @@ class TransformerConfig(BaseModel):
     n_heads: int = 4             # swept: 4, 8
     n_layers: int = 2            # swept: 2, 4
     mlp_ratio: float = 4.0
-    dropout: float = 0.1
 
 
 class BalanceConfig(BaseModel):
@@ -34,7 +33,6 @@ class TrainingConfig(BaseModel):
     batch_size: int = 64
     num_epochs: int = 60
     weight_decay: float = 1e-4
-    dropout: float = 0.1
     num_workers: int = 4
     patience: int = 10
 
