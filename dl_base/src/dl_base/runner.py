@@ -11,10 +11,27 @@ from tqdm import tqdm
 
 
 class Trainer:
+    __slots__ = (
+        "model",
+        "optimizer",
+        "criterion",
+        "device",
+        "checkpoint_dir",
+        "best_val_acc",
+        "start_epoch",
+        "patience",
+        "_epochs_without_improvement",
+    )
 
-    __slots__ = ("model", "optimizer", "criterion", "device", "checkpoint_dir", "best_val_acc", "start_epoch", "patience", "_epochs_without_improvement")
-
-    def __init__(self, model: nn.Module, optimizer: torch.optim.Optimizer, criterion: nn.Module, device: torch.device, checkpoint_dir: str | Path, patience: int = 5) -> None:
+    def __init__(
+        self,
+        model: nn.Module,
+        optimizer: torch.optim.Optimizer,
+        criterion: nn.Module,
+        device: torch.device,
+        checkpoint_dir: str | Path,
+        patience: int = 5,
+    ) -> None:
         self.model = model
         self.optimizer = optimizer
         self.criterion = criterion
@@ -80,18 +97,26 @@ class Trainer:
                 "best_val_acc": self.best_val_acc,
                 "rng_state": {
                     "torch": torch.get_rng_state(),
-                    "cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
+                    "cuda": torch.cuda.get_rng_state_all()
+                    if torch.cuda.is_available()
+                    else None,
                     "numpy": np.random.get_state(),
                     "python": random.getstate(),
                 },
-            }, self.checkpoint_dir / f"{filename}.pth")
+            },
+            self.checkpoint_dir / f"{filename}.pth",
+        )
 
     def load_checkpoint(self, filename: str) -> None:
-        checkpoint = torch.load(self.checkpoint_dir / f"{filename}.pth", map_location=self.device, weights_only=False)
-        self.model.load_state_dict(checkpoint['model_state_dict'])
-        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        self.start_epoch = checkpoint['start_epoch'] + 1
-        self.best_val_acc = checkpoint['best_val_acc']
+        checkpoint = torch.load(
+            self.checkpoint_dir / f"{filename}.pth",
+            map_location=self.device,
+            weights_only=False,
+        )
+        self.model.load_state_dict(checkpoint["model_state_dict"])
+        self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        self.start_epoch = checkpoint["start_epoch"] + 1
+        self.best_val_acc = checkpoint["best_val_acc"]
 
         if rng := checkpoint.get("rng_state"):
             torch.set_rng_state(rng["torch"])
@@ -100,12 +125,22 @@ class Trainer:
             np.random.set_state(rng["numpy"])
             random.setstate(rng["python"])
 
-    def fit(self, train_loader: DataLoader, val_loader: DataLoader, num_epochs: int, project_name: str, group_name: str, run_name: str) -> None:
+    def fit(
+        self,
+        train_loader: DataLoader,
+        val_loader: DataLoader,
+        num_epochs: int,
+        project_name: str,
+        group_name: str,
+        run_name: str,
+    ) -> None:
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
         # CUDA kernel warmup
         if self.device.type == "cuda":
-            dummy = torch.zeros(1, *next(iter(train_loader))[0].shape[1:], device=self.device)
+            dummy = torch.zeros(
+                1, *next(iter(train_loader))[0].shape[1:], device=self.device
+            )
             with torch.no_grad():
                 self.model(dummy)
             torch.cuda.synchronize()
@@ -117,13 +152,15 @@ class Trainer:
             train_loss, train_acc = self.train_one_epoch(train_loader)
             val_loss, val_acc = self.evaluate(val_loader)
 
-            wandb.log({
-                "epoch": epoch,
-                "train/loss": train_loss,
-                "train/acc": train_acc,
-                "val/loss": val_loss,
-                "val/acc": val_acc,
-            })
+            wandb.log(
+                {
+                    "epoch": epoch,
+                    "train/loss": train_loss,
+                    "train/acc": train_acc,
+                    "val/loss": val_loss,
+                    "val/acc": val_acc,
+                }
+            )
 
             self._save_checkpoint("last", epoch)
 
@@ -141,7 +178,9 @@ class Trainer:
             )
 
             if self._epochs_without_improvement >= self.patience:
-                tqdm.write(f"Early stopping triggered at epoch {epoch} — no val_acc improvement for {self.patience} epochs.")
+                tqdm.write(
+                    f"Early stopping triggered at epoch {epoch} — no val_acc improvement for {self.patience} epochs."
+                )
                 break
 
         wandb.finish()
