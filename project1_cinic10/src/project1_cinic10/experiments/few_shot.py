@@ -41,10 +41,13 @@ PATIENCE = 10
 MEAN = [0.4789, 0.4723, 0.4305]
 STD = [0.2421, 0.2383, 0.2587]
 
-TRANSFORM = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize(mean=MEAN, std=STD),
-])
+TRANSFORM = transforms.Compose(
+    [
+        transforms.ToTensor(),
+        transforms.Normalize(mean=MEAN, std=STD),
+    ]
+)
+
 
 class ConvBlock(nn.Module):
     def __init__(self, in_channels: int, out_channels: int) -> None:
@@ -125,9 +128,7 @@ class EpisodicIndex:
 def compute_prototypes(
     embeddings: torch.Tensor, labels: torch.Tensor, n_way: int
 ) -> torch.Tensor:
-    return torch.stack([
-        embeddings[labels == c].mean(dim=0) for c in range(n_way)
-    ])
+    return torch.stack([embeddings[labels == c].mean(dim=0) for c in range(n_way)])
 
 
 def prototypical_loss(
@@ -164,7 +165,9 @@ def evaluate(
         support_x, support_y, query_x, query_y = episodic_index.sample_episode(
             n_way, n_shot, n_query, rng, device
         )
-        loss, acc = prototypical_loss(encoder, support_x, support_y, query_x, query_y, n_way)
+        loss, acc = prototypical_loss(
+            encoder, support_x, support_y, query_x, query_y, n_way
+        )
         losses.append(loss.item())
         accs.append(acc.item())
 
@@ -203,7 +206,6 @@ def save_checkpoint(
     )
 
 
-
 def train_one_run(seed: int, shots: int) -> None:
     set_seed(seed)
     device = get_device()
@@ -219,12 +221,7 @@ def train_one_run(seed: int, shots: int) -> None:
     encoder = ProtoNetEncoder(EMBEDDING_DIM, DROPOUT).to(device)
     optimizer = AdamW(encoder.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
 
-    checkpoint_dir = (
-        CHECKPOINT_ROOT
-        / "fewshot"
-        / f"{shots}shot"
-        / f"seed{seed}"
-    )
+    checkpoint_dir = CHECKPOINT_ROOT / "fewshot" / f"{shots}shot" / f"seed{seed}"
 
     run_name = f"fewshot_{shots}shot_seed{seed}"
 
@@ -278,29 +275,47 @@ def train_one_run(seed: int, shots: int) -> None:
         train_acc = sum(train_accs) / len(train_accs)
 
         val_loss, val_acc = evaluate(
-            encoder, val_episodic, WAYS, shots, QUERIES,
-            EVAL_EPISODES, device, seed=seed + epoch + 1,
+            encoder,
+            val_episodic,
+            WAYS,
+            shots,
+            QUERIES,
+            EVAL_EPISODES,
+            device,
+            seed=seed + epoch + 1,
         )
 
-        wandb.log({
-            "epoch": epoch,
-            "train/loss": train_loss,
-            "train/acc": train_acc,
-            "val/loss": val_loss,
-            "val/acc": val_acc,
-        })
+        wandb.log(
+            {
+                "epoch": epoch,
+                "train/loss": train_loss,
+                "train/acc": train_acc,
+                "val/loss": val_loss,
+                "val/acc": val_acc,
+            }
+        )
 
         save_checkpoint(
-            checkpoint_dir / "last.pt", epoch, encoder, optimizer,
-            best_val_acc, seed, shots,
+            checkpoint_dir / "last.pt",
+            epoch,
+            encoder,
+            optimizer,
+            best_val_acc,
+            seed,
+            shots,
         )
 
         if val_acc > best_val_acc:
             best_val_acc = val_acc
             epochs_without_improvement = 0
             save_checkpoint(
-                checkpoint_dir / "best.pt", epoch, encoder, optimizer,
-                best_val_acc, seed, shots,
+                checkpoint_dir / "best.pt",
+                epoch,
+                encoder,
+                optimizer,
+                best_val_acc,
+                seed,
+                shots,
             )
         else:
             epochs_without_improvement += 1
@@ -319,15 +334,23 @@ def train_one_run(seed: int, shots: int) -> None:
     encoder.load_state_dict(best_ckpt["model_state_dict"])
 
     test_loss, test_acc = evaluate(
-        encoder, test_episodic, WAYS, shots, QUERIES,
-        EVAL_EPISODES, device, seed=seed + 9999,
+        encoder,
+        test_episodic,
+        WAYS,
+        shots,
+        QUERIES,
+        EVAL_EPISODES,
+        device,
+        seed=seed + 9999,
     )
 
-    wandb.log({
-        "best_val_acc": best_val_acc,
-        "test/loss": test_loss,
-        "test/acc": test_acc,
-    })
+    wandb.log(
+        {
+            "best_val_acc": best_val_acc,
+            "test/loss": test_loss,
+            "test/acc": test_acc,
+        }
+    )
 
     print(
         f"Done {run_name} | best_val_acc={best_val_acc:.4f} "

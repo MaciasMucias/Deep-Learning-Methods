@@ -58,19 +58,24 @@ _test_loader_cache: dict[tuple[Path, int], DataLoader] = {}
 def get_test_loader(config: ExperimentConfig) -> DataLoader:
     key = (config.data_root, config.training.batch_size)
     if key not in _test_loader_cache:
-        print(f"  [cache miss] loading test set (batch_size={config.training.batch_size})...", flush=True)
+        print(
+            f"  [cache miss] loading test set (batch_size={config.training.batch_size})...",
+            flush=True,
+        )
         _, _, loader = get_dataloaders(
             config.data_root,
             config.augmentation,
             config.training.batch_size,
-            0,              # num_workers=0 — no worker processes needed or wanted
+            0,  # num_workers=0 — no worker processes needed or wanted
             test_mode=True,
         )
         _test_loader_cache[key] = loader
     else:
-        print(f"  [cache hit]  reusing test set (batch_size={config.training.batch_size})", flush=True)
+        print(
+            f"  [cache hit]  reusing test set (batch_size={config.training.batch_size})",
+            flush=True,
+        )
     return _test_loader_cache[key]
-
 
 
 def discover_seed_dirs(checkpoint_dir: Path, run_name: str) -> list[tuple[int, Path]]:
@@ -116,9 +121,7 @@ def eval_config(
             trainer = Trainer(model, optimizer, criterion, device, checkpoint_dir)
             trainer.load_checkpoint(checkpoint)
 
-            loss, acc = trainer.test(
-                test_loader
-            )
+            loss, acc = trainer.test(test_loader)
             results.append((seed, loss, acc, None))
 
         except Exception as e:
@@ -148,10 +151,14 @@ def main() -> None:
 
         seed_dirs = discover_seed_dirs(config.checkpoint_dir, config.run_name)
         if not seed_dirs:
-            print(f"[skip] {config.run_name}: no seed directories found in {config.checkpoint_dir}")
+            print(
+                f"[skip] {config.run_name}: no seed directories found in {config.checkpoint_dir}"
+            )
             continue
 
-        print(f"{config.run_name}  ({len(seed_dirs)} seed(s): {[s for s, _ in seed_dirs]})")
+        print(
+            f"{config.run_name}  ({len(seed_dirs)} seed(s): {[s for s, _ in seed_dirs]})"
+        )
 
         seed_results = eval_config(config, seed_dirs, args.checkpoint)
 
@@ -170,18 +177,22 @@ def main() -> None:
             print(f"  → no successful runs, skipping row\n")
             continue
 
-        rows.append({
-            "config": str(config_path),
-            "model": config.model_name,
-            "run_name": config.run_name,
-            "n_seeds": len(accuracies),
-            "mean_accuracy": round(float(np.mean(accuracies)), 4),
-            "std_accuracy": round(float(np.std(accuracies)), 4),
-            "mean_loss": round(float(np.mean(losses)), 4),
-            "std_loss": round(float(np.std(losses)), 4),
-            "seeds_status": " | ".join(notes),
-        })
-        print(f"  → mean_acc={rows[-1]['mean_accuracy']:.4f} ± {rows[-1]['std_accuracy']:.4f}\n")
+        rows.append(
+            {
+                "config": str(config_path),
+                "model": config.model_name,
+                "run_name": config.run_name,
+                "n_seeds": len(accuracies),
+                "mean_accuracy": round(float(np.mean(accuracies)), 4),
+                "std_accuracy": round(float(np.std(accuracies)), 4),
+                "mean_loss": round(float(np.mean(losses)), 4),
+                "std_loss": round(float(np.std(losses)), 4),
+                "seeds_status": " | ".join(notes),
+            }
+        )
+        print(
+            f"  → mean_acc={rows[-1]['mean_accuracy']:.4f} ± {rows[-1]['std_accuracy']:.4f}\n"
+        )
 
     if not rows:
         print("[error] No results to write.", file=sys.stderr)
@@ -191,9 +202,14 @@ def main() -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     fieldnames = [
-        "config", "model", "run_name", "n_seeds",
-        "mean_accuracy", "std_accuracy",
-        "mean_loss", "std_loss",
+        "config",
+        "model",
+        "run_name",
+        "n_seeds",
+        "mean_accuracy",
+        "std_accuracy",
+        "mean_loss",
+        "std_loss",
         "seeds_status",
     ]
     with output_path.open("w", newline="") as f:
