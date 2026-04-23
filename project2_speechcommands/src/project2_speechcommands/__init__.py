@@ -1,6 +1,5 @@
 from project2_speechcommands.config import (
     AudioConfig,
-    AugmentationConfig,
     TransformerConfig,
     BalanceConfig,
     TrainingConfig,
@@ -10,7 +9,6 @@ from project2_speechcommands.config import (
 
 __all__ = [
     "AudioConfig",
-    "AugmentationConfig",
     "TransformerConfig",
     "BalanceConfig",
     "TrainingConfig",

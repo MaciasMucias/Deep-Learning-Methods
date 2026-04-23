@@ -24,7 +24,7 @@ class TransformerConfig(BaseModel):
 
 
 class BalanceConfig(BaseModel):
-    strategy: Literal["none", "oversample", "binary_prelim"] = "none"
+    strategy: Literal["none", "oversample", "prelim"] = "none"
     oversample_target_ratio: float = 0.5
 
 
@@ -39,7 +39,7 @@ class TrainingConfig(BaseModel):
 
 class ExperimentConfig(BaseModel):
     model_name: str
-    num_classes: int = 12        # 12 for main model, 2 for binary prelim classifier
+    num_classes: int = 12        # 12 for main model, 3 for prelim (known/unknown/silence)
     data_root: Path
     checkpoint_dir: Path
     project_name: str

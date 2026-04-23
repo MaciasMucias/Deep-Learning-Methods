@@ -19,6 +19,20 @@ SILENCE_LABEL = 10
 UNKNOWN_LABEL = 11
 NUM_CLASSES = 12
 
+PRELIM_KNOWN_LABEL   = 0  # core commands (raw 0-9) → 0
+PRELIM_UNKNOWN_LABEL = 1  # UNKNOWN_LABEL (11)      → 1
+PRELIM_SILENCE_LABEL = 2  # SILENCE_LABEL (10)      → 2
+
+PRELIM_CLASS_NAMES = ["known", "unknown", "silence"]
+
+
+def remap_label_for_prelim(raw_label: int) -> int:
+    if raw_label == SILENCE_LABEL:
+        return PRELIM_SILENCE_LABEL
+    if raw_label == UNKNOWN_LABEL:
+        return PRELIM_UNKNOWN_LABEL
+    return PRELIM_KNOWN_LABEL
+
 # Approximate log-Mel statistics for Speech Commands v1 — update after computing on training set
 SC_MEAN = -21.5
 SC_STD = 16.0
@@ -29,11 +43,13 @@ class SpeechCommandsDataset(Dataset):
         self,
         data_root: Path,
         split: Literal["train", "val", "test"],
-        audio_cfg: AudioConfig
+        audio_cfg: AudioConfig,
+        remap_prelim: bool = False,
     ) -> None:
         self.data_root = data_root
         self.split = split
         self.audio_cfg = audio_cfg
+        self.remap_prelim = remap_prelim
 
         # 1. Call _parse_split_files() to get val_set and test_set
         self.val_set, self.test_set = self._parse_split_files()
@@ -149,16 +165,19 @@ class SpeechCommandsDataset(Dataset):
         if normalised_logMel.shape[1] != self.audio_cfg.target_frames:
             normalised_logMel = torch.nn.functional.pad(normalised_logMel, (0, self.audio_cfg.target_frames - normalised_logMel.shape[-1]))
 
+        if self.remap_prelim:
+            label = remap_label_for_prelim(label)
         return normalised_logMel, label
 
 
-def get_datasets(
+def get_dataloaders(
     root: str | Path,
     audio_cfg: AudioConfig,
     balance_cfg: BalanceConfig,
     batch_size: int = 64,
     num_workers: int = 4,
     test_mode: bool = False,
+    remap_prelim: bool = False,
 ) -> tuple[DataLoader | None, DataLoader | None, DataLoader]:
     """
     Returns (train_loader, val_loader, test_loader).
@@ -167,16 +186,16 @@ def get_datasets(
     Balance strategies:
     - "none": standard shuffle DataLoader
     - "oversample": WeightedRandomSampler with inverse-frequency weights
-    - "binary_prelim": standard DataLoader (two-stage handled in eval.py)
+    - "prelim": standard DataLoader with 3-class label remapping (known/unknown/silence)
     """
-    test_dataset = SpeechCommandsDataset(root, "test", audio_cfg=audio_cfg)
+    test_dataset = SpeechCommandsDataset(root, "test", audio_cfg=audio_cfg, remap_prelim=remap_prelim)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, num_workers=num_workers)
     if test_mode:
         return None, None, test_dataloader
 
-    val_dataset = SpeechCommandsDataset(root, "val", audio_cfg=audio_cfg)
+    val_dataset = SpeechCommandsDataset(root, "val", audio_cfg=audio_cfg, remap_prelim=remap_prelim)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, num_workers=num_workers)
-    train_dataset = SpeechCommandsDataset(root, "train", audio_cfg=audio_cfg)
+    train_dataset = SpeechCommandsDataset(root, "train", audio_cfg=audio_cfg, remap_prelim=remap_prelim)
 
     if balance_cfg.strategy == "oversample":
         class_counts = Counter(label for _, label, _ in train_dataset.samples)
