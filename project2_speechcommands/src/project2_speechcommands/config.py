@@ -16,9 +16,9 @@ class AudioConfig(BaseModel):
     target_frames: int = 112  # pad spectrogram time axis to 112 = 7×16 patches
 
 
-class CNNConfig(BaseModel):
-    channels: list[int] = [32, 64, 128, 256]
-    dropout: float = 0.3
+# class CNNConfig(BaseModel):
+#     channels: list[int] = [32, 64, 128, 256]
+#     dropout: float = 0.3
 
 class TransformerConfig(BaseModel):
     patch_size: tuple[int, int] = (16, 16)

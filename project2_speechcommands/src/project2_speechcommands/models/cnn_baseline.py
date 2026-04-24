@@ -22,6 +22,12 @@ class ConvBlock(nn.Module):
 
 
 class CNNBaseline(nn.Module):
+    """
+    Simple CNN baseline for speech command classification.
+
+    Input:  (B, 1, 128, 112) log-Mel spectrogram
+    Output: (B, num_classes) logits
+    """
     def __init__(self, num_classes: int = 12, dropout: float = 0.3) -> None:
         super().__init__()
 
@@ -48,12 +54,11 @@ class CNNBaseline(nn.Module):
         x = self.classifier(x)
         return x
     
-if __name__ == "__main__":
-    import torch
+# if __name__ == "__main__":
 
-    model = CNNBaseline(num_classes=12)
-    x = torch.randn(4, 1, 128, 112)
-    y = model(x)
+#     model = CNNBaseline(num_classes=12)
+#     x = torch.randn(4, 1, 128, 112)
+#     y = model(x)
 
-    print("Input shape:", x.shape)
-    print("Output shape:", y.shape)
+#     print("Input shape:", x.shape)
+#     print("Output shape:", y.shape)
