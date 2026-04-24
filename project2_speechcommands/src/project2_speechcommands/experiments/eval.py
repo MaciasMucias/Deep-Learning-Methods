@@ -186,8 +186,9 @@ def eval_config(
                 weight_decay=config.training.weight_decay,
             )
             criterion = nn.CrossEntropyLoss()
+
             trainer = Trainer(model, optimizer, criterion, device, checkpoint_dir)
-            trainer.load_checkpoint(checkpoint)
+            trainer.load_checkpoint(checkpoint, restore_rng=False)
 
             all_preds, all_targets = [], []
 
