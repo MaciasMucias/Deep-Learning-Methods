@@ -13,10 +13,12 @@ def set_seed(seed: int) -> None:
     np.random.seed(seed)
     random.seed(seed)
 
+
 def get_device(device: str | None = None) -> torch.device:
     if device is not None:
         return torch.device(device)
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 def count_parameters(model: nn.Module) -> int:
     return sum(p.numel() for p in model.parameters() if p.requires_grad)

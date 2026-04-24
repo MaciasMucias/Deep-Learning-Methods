@@ -12,7 +12,6 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-
 def main() -> None:
     args = get_args()
     config = load_config(args.config)
@@ -20,7 +19,15 @@ def main() -> None:
     for seed in args.seeds:
         print(f"Running {config.run_name} with seed {seed} on {get_device().type}")
         trainer, train_loader, val_loader, _ = setup_experiment(config, seed)
-        trainer.fit(train_loader, val_loader, config.training.num_epochs, config.project_name, config.run_name, f"{config.run_name}_seed{seed}")
+        trainer.fit(
+            train_loader,
+            val_loader,
+            config.training.num_epochs,
+            config.project_name,
+            config.run_name,
+            f"{config.run_name}_seed{seed}",
+        )
+
 
 if __name__ == "__main__":
     main()

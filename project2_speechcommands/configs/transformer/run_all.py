@@ -2,28 +2,22 @@ import subprocess
 from pathlib import Path
 import os
 
-# ===== KONFIG =====
-SEEDS = [42]
-SCRIPT = "project1_cinic10.experiments.train"
-LOG_FILE = "completed_runs_resnet20.txt"
+# ===== CONFIG =====
+SEEDS = [1, 2, 42]
+SCRIPT = "project2_speechcommands.experiments.train"
+LOG_FILE = "completed_runs_transformer.txt"
 # ==================
 
 
 def load_completed(log_path: Path) -> set[str]:
-    """Wczytaj listę zakończonych runów"""
     if not log_path.exists():
         return set()
-
     with open(log_path, "r") as f:
         lines = f.readlines()
-
-    completed = {line.strip() for line in lines if line.strip()}
-
-    return completed
+    return {line.strip() for line in lines if line.strip()}
 
 
 def append_completed(log_path: Path, name: str):
-    """Dodaj zakończony run do loga"""
     with open(log_path, "a") as f:
         f.write(name + "\n")
 

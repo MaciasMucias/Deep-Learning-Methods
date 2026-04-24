@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from pathlib import Path
 from typing import List
 
+
 class AugmentationConfig(BaseModel):
     horizontal_flip: bool
     random_crop: bool
@@ -24,6 +25,7 @@ class TrainingConfig(BaseModel):
     weight_decay: float
     dropout: float
     num_workers: int
+
 
 class ExperimentConfig(BaseModel):
     model_name: str

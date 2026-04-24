@@ -8,7 +8,9 @@ from project1_cinic10.data import get_dataloaders
 from project1_cinic10.models import MODEL_REGISTRY
 
 
-def setup_experiment(config: ExperimentConfig, seed: int, *, test_mode: bool = False) -> tuple[Trainer, DataLoader, DataLoader, DataLoader]:
+def setup_experiment(
+    config: ExperimentConfig, seed: int, *, test_mode: bool = False
+) -> tuple[Trainer, DataLoader, DataLoader, DataLoader]:
     device = get_device()
     set_seed(seed)
     checkpoint_dir = config.checkpoint_dir / f"{config.run_name}_seed({seed})"
@@ -21,7 +23,11 @@ def setup_experiment(config: ExperimentConfig, seed: int, *, test_mode: bool = F
     )
     model = MODEL_REGISTRY[config.model_name](dropout=config.training.dropout)
     model.to(device)
-    optimizer = AdamW(model.parameters(), lr=config.training.lr, weight_decay=config.training.weight_decay)
+    optimizer = AdamW(
+        model.parameters(),
+        lr=config.training.lr,
+        weight_decay=config.training.weight_decay,
+    )
     criterion = nn.CrossEntropyLoss()
     trainer = Trainer(model, optimizer, criterion, device, checkpoint_dir)
     return trainer, train_loader, val_loader, test_loader

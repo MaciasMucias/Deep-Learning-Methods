@@ -12,8 +12,9 @@ class AudioConfig(BaseModel):
     hop_length: int = 160
     f_min: float = 0.0
     f_max: float = 8000.0
-    target_length: int = 16000   # pad/trim audio to exactly 1 second of samples
-    target_frames: int = 112     # pad spectrogram time axis to 112 = 7×16 patches
+    target_length: int = 16000  # pad/trim audio to exactly 1 second of samples
+    target_frames: int = 112  # pad spectrogram time axis to 112 = 7×16 patches
+
 
 class CNNConfig(BaseModel):
     channels: list[int] = [32, 64, 128, 256]
@@ -21,14 +22,14 @@ class CNNConfig(BaseModel):
 
 class TransformerConfig(BaseModel):
     patch_size: tuple[int, int] = (16, 16)
-    embed_dim: int = 128         # swept: 128, 256
-    n_heads: int = 4             # swept: 4, 8
-    n_layers: int = 2            # swept: 2, 4
+    embed_dim: int = 128  # swept: 128, 256
+    n_heads: int = 4  # swept: 4, 8
+    n_layers: int = 2  # swept: 2, 4
     mlp_ratio: float = 4.0
 
 
 class BalanceConfig(BaseModel):
-    strategy: Literal["none", "oversample", "binary_prelim"] = "none"
+    strategy: Literal["none", "oversample", "prelim"] = "none"
     oversample_target_ratio: float = 0.5
 
 
@@ -43,7 +44,7 @@ class TrainingConfig(BaseModel):
 
 class ExperimentConfig(BaseModel):
     model_name: str
-    num_classes: int = 12        # 12 for main model, 2 for binary prelim classifier
+    num_classes: int = 12  # 12 for main model, 3 for prelim (known/unknown/silence)
     data_root: Path
     checkpoint_dir: Path
     project_name: str

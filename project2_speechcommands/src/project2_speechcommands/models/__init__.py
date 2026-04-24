@@ -5,8 +5,8 @@ from project2_speechcommands.models.transformer import SpectrogramTransformer
 from project2_speechcommands.models.cnn_transformer import CNNTransformer
 
 MODEL_REGISTRY: dict[str, type[nn.Module]] = {
-    "cnn_baseline":    CNNBaseline,
-    "transformer":     SpectrogramTransformer,
+    "cnn_baseline": CNNBaseline,
+    "transformer": SpectrogramTransformer,
     "cnn_transformer": CNNTransformer,
 }
 
