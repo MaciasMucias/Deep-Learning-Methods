@@ -9,13 +9,17 @@ from project2_speechcommands.models import MODEL_REGISTRY
 
 
 def build_model(config: ExperimentConfig) -> nn.Module:
-    """Instantiate model from registry, passing transformer kwargs where applicable."""
     kwargs: dict = {"num_classes": config.num_classes}
-    if config.model_name in ("transformer", "cnn_transformer"):
-        kwargs |= {
-            k: getattr(config.transformer, k)
-            for k in ("embed_dim", "n_heads", "n_layers")
-        }
+
+    transformer_kwargs = config.transformer.model_dump()
+
+    if config.model_name == "transformer":
+        kwargs |= transformer_kwargs
+
+    elif config.model_name == "cnn_transformer":
+        transformer_kwargs.pop("patch_size")
+        kwargs |= transformer_kwargs
+
     return MODEL_REGISTRY[config.model_name](**kwargs)
 
 
