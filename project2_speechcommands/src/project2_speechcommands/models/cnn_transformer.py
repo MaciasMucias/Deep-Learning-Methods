@@ -87,7 +87,7 @@ class CNNTransformer(nn.Module):
             kernel_size=1,
         )
 
-        num_tokens = 16 * 14 # W razie zmian w CNN, należy zaktualizować tę wartość
+        num_tokens = 16 * 14
 
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
         self.pos_embed = nn.Parameter(torch.zeros(1, num_tokens + 1, embed_dim))
