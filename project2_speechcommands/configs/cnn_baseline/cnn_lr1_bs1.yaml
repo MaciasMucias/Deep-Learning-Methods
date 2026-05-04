@@ -9,6 +9,5 @@ training:
   batch_size: 32
   num_epochs: 60
   weight_decay: 0.0001
-  dropout: 0.1
   num_workers: 4
   patience: 10

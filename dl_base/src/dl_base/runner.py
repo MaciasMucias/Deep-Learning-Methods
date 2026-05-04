@@ -107,7 +107,7 @@ class Trainer:
             self.checkpoint_dir / f"{filename}.pth",
         )
 
-    def load_checkpoint(self, filename: str) -> None:
+    def load_checkpoint(self, filename: str, restore_rng: bool = True) -> None:
         checkpoint = torch.load(
             self.checkpoint_dir / f"{filename}.pth",
             map_location=self.device,
@@ -118,10 +118,17 @@ class Trainer:
         self.start_epoch = checkpoint["start_epoch"] + 1
         self.best_val_acc = checkpoint["best_val_acc"]
 
-        if rng := checkpoint.get("rng_state"):
-            torch.set_rng_state(rng["torch"])
+        if restore_rng and (rng := checkpoint.get("rng_state")):
+            torch_rng = rng["torch"]
+
+            if not isinstance(torch_rng, torch.ByteTensor):
+                torch_rng = torch_rng.cpu().to(torch.uint8)
+
+            torch.set_rng_state(torch_rng)
+
             if rng["cuda"] is not None and torch.cuda.is_available():
                 torch.cuda.set_rng_state_all(rng["cuda"])
+
             np.random.set_state(rng["numpy"])
             random.setstate(rng["python"])
 

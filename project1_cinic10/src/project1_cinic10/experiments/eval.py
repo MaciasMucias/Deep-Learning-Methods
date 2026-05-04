@@ -10,17 +10,21 @@ Usage:
 """
 
 import argparse
-import csv
-import re
 import sys
 from pathlib import Path
 
-import numpy as np
 from torch import nn
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
 
 from dl_base import get_device, set_seed, Trainer
+from dl_base import (
+    discover_seed_dirs,
+    aggregate_seed_results,
+    make_result_row,
+    write_results_csv,
+    BASE_CSV_FIELDNAMES,
+)
 from project1_cinic10.config import load_config, ExperimentConfig
 from project1_cinic10.data import get_dataloaders
 from project1_cinic10.models import MODEL_REGISTRY
@@ -77,18 +81,6 @@ def get_test_loader(config: ExperimentConfig) -> DataLoader:
         )
     return _test_loader_cache[key]
 
-
-def discover_seed_dirs(checkpoint_dir: Path, run_name: str) -> list[tuple[int, Path]]:
-    """Return [(seed, path), ...] for all matching run directories, sorted by seed."""
-    pattern = re.compile(rf"^{re.escape(run_name)}_seed\((\d+)\)$")
-    matches = []
-    for candidate in checkpoint_dir.iterdir():
-        if not candidate.is_dir():
-            continue
-        m = pattern.match(candidate.name)
-        if m:
-            matches.append((int(m.group(1)), candidate))
-    return sorted(matches, key=lambda x: x[0])
 
 
 def eval_config(
@@ -162,34 +154,13 @@ def main() -> None:
 
         seed_results = eval_config(config, seed_dirs, args.checkpoint)
 
-        losses, accuracies, notes = [], [], []
-        for seed, loss, acc, err in seed_results:
-            if err is not None:
-                print(f"    seed({seed})  [FAILED] {err}", file=sys.stderr)
-                notes.append(f"seed({seed}): FAILED")
-            else:
-                print(f"    seed({seed})  loss={loss:.4f}  acc={acc:.4f}")
-                losses.append(loss)
-                accuracies.append(acc)
-                notes.append(f"seed({seed}): ok")
+        losses, accuracies, notes = aggregate_seed_results(seed_results)
 
         if not accuracies:
             print(f"  → no successful runs, skipping row\n")
             continue
 
-        rows.append(
-            {
-                "config": str(config_path),
-                "model": config.model_name,
-                "run_name": config.run_name,
-                "n_seeds": len(accuracies),
-                "mean_accuracy": round(float(np.mean(accuracies)), 4),
-                "std_accuracy": round(float(np.std(accuracies)), 4),
-                "mean_loss": round(float(np.mean(losses)), 4),
-                "std_loss": round(float(np.std(losses)), 4),
-                "seeds_status": " | ".join(notes),
-            }
-        )
+        rows.append(make_result_row(config_path, config.model_name, config.run_name, losses, accuracies, notes))
         print(
             f"  → mean_acc={rows[-1]['mean_accuracy']:.4f} ± {rows[-1]['std_accuracy']:.4f}\n"
         )
@@ -199,24 +170,7 @@ def main() -> None:
         sys.exit(1)
 
     output_path = Path(args.output)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    fieldnames = [
-        "config",
-        "model",
-        "run_name",
-        "n_seeds",
-        "mean_accuracy",
-        "std_accuracy",
-        "mean_loss",
-        "std_loss",
-        "seeds_status",
-    ]
-    with output_path.open("w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(rows)
-
+    write_results_csv(output_path, rows, BASE_CSV_FIELDNAMES)
     print(f"Results written to: {output_path}  ({len(rows)} rows)")
 
 
