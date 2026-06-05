@@ -166,6 +166,20 @@ def eval_config(
     n_out_classes = 12 if use_two_stage else config.num_classes
     agg_cm = np.zeros((n_out_classes, n_out_classes), dtype=int)
 
+    if use_two_stage:
+        prelim_seed_dirs = discover_seed_dirs(
+            Path(binary_checkpoint_path), prelim_config.run_name
+        )
+        prelim_seeds = {s for s, _ in prelim_seed_dirs}
+        main_seeds = {s for s, _ in seed_dirs}
+        only_main = main_seeds - prelim_seeds
+        only_prelim = prelim_seeds - main_seeds
+        if only_main:
+            print(f"  [warn] seeds only in main (skipped): {sorted(only_main)}")
+        if only_prelim:
+            print(f"  [warn] seeds only in prelim (skipped): {sorted(only_prelim)}")
+        seed_dirs = [(s, p) for s, p in seed_dirs if s in prelim_seeds]
+
     for seed, _ in seed_dirs:
         try:
             set_seed(seed)
@@ -200,7 +214,7 @@ def eval_config(
                 prelim_trainer = Trainer(
                     prelim_model, prelim_optimizer, criterion, device, prelim_ckpt_dir
                 )
-                prelim_trainer.load_checkpoint(checkpoint)
+                prelim_trainer.load_checkpoint(checkpoint, restore_rng=False)
 
                 classifier = TwoStageClassifier(model, prelim_model, device)
                 model.eval()

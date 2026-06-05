@@ -3,7 +3,7 @@ from pathlib import Path
 import os
 
 # ===== CONFIG =====
-SEEDS = [42]
+SEEDS = [1, 2, 42]
 SCRIPT = "project2_speechcommands.experiments.train"
 LOG_FILE = "completed_runs_binary_classifier.txt"
 # ==================
