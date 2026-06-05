@@ -10,4 +10,5 @@ members = [
     "dl_base",
     "project1_cinic10",
     "project2_speechcommands",
+    "project3_catgen",
 ]
