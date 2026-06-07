@@ -22,10 +22,14 @@ class PreloadedCatDataset(Dataset):
         images = []
         for path in tqdm(paths, desc="preloading images"):
             try:
-                img = Image.open(path).convert("RGB")
-                images.append(transform(img))
+                with Image.open(path) as img:
+                    images.append(transform(img.convert("RGB")))
             except Exception as e:
                 warnings.warn(f"Skipping corrupt file {path}: {e}")
+        if not images:
+            raise ValueError(
+                f"No valid images were loaded (n_paths={len(paths)}). Check the dataset path and file integrity."
+            )
         self.images = torch.stack(images)
 
     def __len__(self) -> int:
@@ -39,7 +43,7 @@ def get_dataloaders(
     root: str | Path,
     data_config: DataConfig,
     batch_size: int = 64,
-    num_workers: int = 4,
+    num_workers: int = 0,
     test_mode: bool = False,
 ) -> tuple[DataLoader | None, DataLoader | None, DataLoader | None]:
     root = Path(root)
