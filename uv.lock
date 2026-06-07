@@ -928,10 +928,14 @@ version = "0.1.0"
 source = { editable = "project3_catgen" }
 dependencies = [
     { name = "dl-base" },
+    { name = "scipy" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "dl-base", editable = "dl_base" }]
+requires-dist = [
+    { name = "dl-base", editable = "dl_base" },
+    { name = "scipy", specifier = ">=1.17.1" },
+]
 
 [[package]]
 name = "protobuf"

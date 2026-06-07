@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "dl_base",
+    "scipy>=1.17.1",
 ]
 
 [tool.uv.sources]
