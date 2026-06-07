@@ -8,9 +8,8 @@ from scipy.linalg import sqrtm
 
 
 def _load_inception(device: torch.device) -> nn.Module:
-    model = inception_v3(weights=Inception_V3_Weights.DEFAULT)
+    model = inception_v3(weights=Inception_V3_Weights.DEFAULT, aux_logits=False)
     model.fc = nn.Identity()
-    model.aux_logits = False
     model.eval()
     return model.to(device)
 
@@ -29,13 +28,18 @@ def extract_inception_features(
     """
     if inception is None:
         inception = _load_inception(device)
+    inception = inception.eval().to(device)
+
+    mean = torch.tensor([0.485, 0.456, 0.406], device=device).view(1, 3, 1, 1)
+    std = torch.tensor([0.229, 0.224, 0.225], device=device).view(1, 3, 1, 1)
 
     features = []
     for batch in dataloader:
         if isinstance(batch, (list, tuple)):
             batch = batch[0]
         imgs = batch.to(device)
-        imgs = (imgs + 1.0) / 2.0  # [-1, 1] → [0, 1] before InceptionV3 normalises
+        imgs = (imgs + 1.0) / 2.0  # [-1, 1] → [0, 1]
+        imgs = (imgs - mean) / std  # ImageNet normalisation
         imgs = F.interpolate(imgs, size=(299, 299), mode="bilinear", align_corners=False)
         feats = inception(imgs)
         features.append(feats.cpu().numpy())
