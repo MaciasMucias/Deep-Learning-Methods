@@ -1,0 +1,22 @@
+# Experiment Configuration
+model_name:
+
+# Paths
+data_root:
+checkpoint_dir:
+
+# Weights & Biases
+project_name:
+run_name:
+
+# Data
+data:
+  image_size:
+
+# Training
+training:
+  lr:
+  batch_size:
+  num_epochs:
+  weight_decay:
+  num_workers:

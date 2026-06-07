@@ -1,0 +1,16 @@
+[project]
+name = "project3-catgen"
+version = "0.1.0"
+description = "Cat image generation with DCGAN and VAE"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "dl_base",
+]
+
+[tool.uv.sources]
+dl_base = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.10.10,<0.11.0"]
+build-backend = "uv_build"
