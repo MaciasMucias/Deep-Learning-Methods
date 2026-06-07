@@ -26,6 +26,10 @@ class PreloadedCatDataset(Dataset):
                     images.append(transform(img.convert("RGB")))
             except Exception as e:
                 warnings.warn(f"Skipping corrupt file {path}: {e}")
+        if not images:
+            raise ValueError(
+                f"No valid images were loaded (n_paths={len(paths)}). Check the dataset path and file integrity."
+            )
         self.images = torch.stack(images)
 
     def __len__(self) -> int:
