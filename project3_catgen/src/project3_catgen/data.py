@@ -43,7 +43,7 @@ def get_dataloaders(
     root: str | Path,
     data_config: DataConfig,
     batch_size: int = 64,
-    num_workers: int = 4,
+    num_workers: int = 0,
     test_mode: bool = False,
 ) -> tuple[DataLoader | None, DataLoader | None, DataLoader | None]:
     root = Path(root)
