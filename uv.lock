@@ -928,12 +928,16 @@ version = "0.1.0"
 source = { editable = "project3_catgen" }
 dependencies = [
     { name = "dl-base" },
+    { name = "pydantic" },
+    { name = "pyyaml" },
     { name = "scipy" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "dl-base", editable = "dl_base" },
+    { name = "pydantic", specifier = ">=2.12.5" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "scipy", specifier = ">=1.17.1" },
 ]
 

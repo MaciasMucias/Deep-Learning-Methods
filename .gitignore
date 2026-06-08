@@ -45,3 +45,8 @@ coverage.xml
 *.swo
 
 docs/
+
+# Project 3 local data and generated artifacts
+/project3_catgen/data/
+/project3_catgen/runs/
+/project3_catgen/outputs/

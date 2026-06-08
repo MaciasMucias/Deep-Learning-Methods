@@ -1,19 +1,31 @@
 import yaml
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pathlib import Path
 
 
 class DataConfig(BaseModel):
-    image_size: int
+    image_size: int = 64
 
 
 class TrainingConfig(BaseModel):
-    lr: float
-    batch_size: int
-    num_epochs: int
-    weight_decay: float
-    num_workers: int
+    lr: float = 2e-4
+    batch_size: int = 64
+    num_epochs: int = 100
+    weight_decay: float = 0.0
+    num_workers: int = 0
+    sample_every: int = 1
+    checkpoint_every: int = 10
+
+
+class DCGANConfig(BaseModel):
+    latent_dim: int = 128
+    generator_features: int = 64
+    discriminator_features: int = 64
+    beta1: float = 0.5
+    beta2: float = 0.999
+    label_smoothing: float = 0.0
+    sample_grid_size: int = 64
 
 
 class ExperimentConfig(BaseModel):
@@ -24,6 +36,7 @@ class ExperimentConfig(BaseModel):
     run_name: str
     data: DataConfig
     training: TrainingConfig
+    dcgan: DCGANConfig = Field(default_factory=DCGANConfig)
 
 
 def load_config(path: str | Path) -> ExperimentConfig:
