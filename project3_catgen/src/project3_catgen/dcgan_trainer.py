@@ -136,6 +136,7 @@ class DCGANTrainer:
     def save_checkpoint(self, filename: str, epoch: int) -> Path:
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
         output_path = self.checkpoint_dir / f"{filename}.pth"
+        temp_path = output_path.with_name(f"{output_path.name}.tmp")
         torch.save(
             {
                 "epoch": epoch,
@@ -157,8 +158,9 @@ class DCGANTrainer:
                     "python": random.getstate(),
                 },
             },
-            output_path,
+            temp_path,
         )
+        temp_path.replace(output_path)
         return output_path
 
     def load_checkpoint(self, filename: str, restore_rng: bool = True) -> None:
