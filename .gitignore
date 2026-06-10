@@ -45,3 +45,5 @@ coverage.xml
 *.swo
 
 docs/
+
+project3_catgen/data
