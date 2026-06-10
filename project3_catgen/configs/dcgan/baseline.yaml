@@ -1,19 +1,12 @@
-# Experiment Configuration
 model_name: dcgan
-
-# Paths
 data_root: project3_catgen/data/cats
 checkpoint_dir: project3_catgen/runs
-
-# Weights & Biases
 project_name: project3-catgen
 run_name: dcgan_baseline
 
-# Data
 data:
   image_size: 64
 
-# Training
 training:
   lr: 0.0002
   batch_size: 64
@@ -23,7 +16,6 @@ training:
   sample_every: 1
   checkpoint_every: 10
 
-# DCGAN
 dcgan:
   latent_dim: 128
   generator_features: 64
