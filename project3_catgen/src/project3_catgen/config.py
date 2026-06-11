@@ -28,6 +28,14 @@ class DCGANConfig(BaseModel):
     sample_grid_size: int = 64
 
 
+class VAEConfig(BaseModel):
+    latent_dim: int = 128
+    encoder_features: int = 64
+    decoder_features: int = 64
+    beta: float = 1.0
+    sample_grid_size: int = 64
+
+
 class ExperimentConfig(BaseModel):
     model_name: str
     data_root: Path
@@ -37,6 +45,7 @@ class ExperimentConfig(BaseModel):
     data: DataConfig
     training: TrainingConfig
     dcgan: DCGANConfig = Field(default_factory=DCGANConfig)
+    vae: VAEConfig = Field(default_factory=VAEConfig)
 
 
 def load_config(path: str | Path) -> ExperimentConfig:
