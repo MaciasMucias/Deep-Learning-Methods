@@ -1,0 +1,25 @@
+model_name: vae
+
+data_root: project3_catgen/data/cats
+checkpoint_dir: project3_catgen/runs
+project_name: project3-catgen
+run_name: vae_learning_rate_1e-3
+
+data:
+  image_size: 64
+
+training:
+  lr: 0.001
+  batch_size: 64
+  num_epochs: 100
+  weight_decay: 0.0
+  num_workers: 0
+  sample_every: 1
+  checkpoint_every: 10
+
+vae:
+  latent_dim: 128
+  encoder_features: 64
+  decoder_features: 64
+  beta: 1.0
+  sample_grid_size: 64
