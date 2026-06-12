@@ -1,10 +1,10 @@
-"""Train DCGAN models from YAML configuration files."""
+"""Train generative models from YAML configuration files."""
 
 import argparse
 
 from dl_base import count_parameters, get_device
 from project3_catgen.config import load_config
-from project3_catgen.experiments.utils import setup_dcgan_experiment
+from project3_catgen.experiments.utils import setup_dcgan_experiment, setup_vae_experiment
 
 
 def get_args() -> argparse.Namespace:
@@ -30,12 +30,19 @@ def main() -> None:
 
     for seed in args.seeds:
         print(f"Running {config.run_name} | seed={seed} | device={get_device().type}")
-        trainer, train_loader = setup_dcgan_experiment(config, seed)
-        print(
-            "  Parameters: "
-            f"G={count_parameters(trainer.generator):,}, "
-            f"D={count_parameters(trainer.discriminator):,}"
-        )
+
+        if config.model_name == "dcgan":
+            trainer, train_loader = setup_dcgan_experiment(config, seed)
+            print(
+                "  Parameters: "
+                f"G={count_parameters(trainer.generator):,}, "
+                f"D={count_parameters(trainer.discriminator):,}"
+            )
+        elif config.model_name == "vae":
+            trainer, train_loader = setup_vae_experiment(config, seed)
+            print(f"  Parameters: {count_parameters(trainer.vae):,}")
+        else:
+            raise ValueError(f"Unknown model_name: {config.model_name!r}")
 
         if args.resume:
             trainer.load_checkpoint("last")

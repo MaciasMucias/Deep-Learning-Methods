@@ -1,4 +1,4 @@
-"""Generate a linear interpolation between two DCGAN latent vectors."""
+"""Generate a linear interpolation between two latent vectors."""
 
 import argparse
 from pathlib import Path
@@ -8,11 +8,12 @@ from torchvision.utils import save_image
 
 from dl_base import get_device, set_seed
 from project3_catgen.config import load_config
-from project3_catgen.experiments.utils import build_dcgan
+from project3_catgen.experiments.utils import build_dcgan, build_vae
 from project3_catgen.generation import (
     generate_images,
     interpolate_latents,
     sample_latent,
+    sample_latent_vae,
 )
 
 
@@ -33,16 +34,26 @@ def main() -> None:
     device = get_device()
     set_seed(args.latent_seed)
 
-    generator, _ = build_dcgan(config)
-    generator.to(device)
     checkpoint_dir = config.checkpoint_dir / f"{config.run_name}_seed({args.seed})"
     checkpoint_path = checkpoint_dir / f"{args.checkpoint}.pth"
     checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
-    generator.load_state_dict(checkpoint["generator_state_dict"])
 
-    endpoints = sample_latent(2, config.dcgan.latent_dim, device)
-    latents, alphas = interpolate_latents(endpoints[0], endpoints[1], args.steps)
-    images = generate_images(generator, latents, batch_size=args.steps)
+    if config.model_name == "dcgan":
+        generator, _ = build_dcgan(config)
+        generator.to(device)
+        generator.load_state_dict(checkpoint["generator_state_dict"])
+        endpoints = sample_latent(2, config.dcgan.latent_dim, device)
+        latents, alphas = interpolate_latents(endpoints[0], endpoints[1], args.steps)
+        images = generate_images(generator, latents, batch_size=args.steps)
+    elif config.model_name == "vae":
+        vae = build_vae(config)
+        vae.to(device)
+        vae.load_state_dict(checkpoint["vae_state_dict"])
+        endpoints = sample_latent_vae(2, config.vae.latent_dim, device)
+        latents, alphas = interpolate_latents(endpoints[0], endpoints[1], args.steps)
+        images = generate_images(vae.decode, latents, batch_size=args.steps, module=vae)
+    else:
+        raise ValueError(f"Unknown model_name: {config.model_name!r}")
 
     output_path = args.output or checkpoint_dir / "interpolation.png"
     output_path.parent.mkdir(parents=True, exist_ok=True)

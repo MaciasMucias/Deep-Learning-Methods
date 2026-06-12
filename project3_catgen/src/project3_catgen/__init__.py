@@ -3,9 +3,10 @@ from project3_catgen.config import (
     DataConfig,
     ExperimentConfig,
     TrainingConfig,
+    VAEConfig,
     load_config,
 )
-from project3_catgen.models import Discriminator, Generator
+from project3_catgen.models import Discriminator, Generator, VAE
 
 __all__ = [
     "DCGANConfig",
@@ -14,5 +15,7 @@ __all__ = [
     "ExperimentConfig",
     "Generator",
     "TrainingConfig",
+    "VAE",
+    "VAEConfig",
     "load_config",
 ]
